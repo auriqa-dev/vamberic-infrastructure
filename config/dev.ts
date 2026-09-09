@@ -2,6 +2,8 @@ import type { EnvironmentConfig } from './environment.js';
 
 export const devConfig: EnvironmentConfig = {
   name: 'dev',
+  nodeEnvironment: 'production',
+  deploymentEnvironment: 'dev',
   region: 'eu-west-2',
   maxAzs: 2,
   natGateways: 1,
@@ -12,5 +14,5 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
-  apiImageTag: '0.1.0-8da657e',
+  apiImageTag: '033dd7d',
 };

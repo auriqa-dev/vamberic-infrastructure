@@ -2,6 +2,8 @@ import type { EnvironmentConfig } from './environment.js';
 
 export const prodConfig: EnvironmentConfig = {
   name: 'prod',
+  nodeEnvironment: 'production',
+  deploymentEnvironment: 'prod',
   region: 'eu-west-2',
   maxAzs: 2,
   natGateways: 2,

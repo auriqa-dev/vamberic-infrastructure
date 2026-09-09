@@ -5,6 +5,8 @@ export type EnvironmentName = 'dev' | 'prod';
 
 export interface EnvironmentConfig {
   readonly name: EnvironmentName;
+  readonly nodeEnvironment: 'production';
+  readonly deploymentEnvironment: EnvironmentName;
   readonly account?: string;
   readonly region: string;
   readonly maxAzs: number;

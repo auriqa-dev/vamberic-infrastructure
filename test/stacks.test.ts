@@ -70,6 +70,16 @@ describe('Vamberic infrastructure assumptions', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
+          Environment: [
+            {
+              Name: 'NODE_ENV',
+              Value: 'production',
+            },
+            {
+              Name: 'DEPLOYMENT_ENV',
+              Value: 'dev',
+            },
+          ],
           HealthCheck: {
             Command: [
               'CMD',

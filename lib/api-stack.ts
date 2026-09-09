@@ -66,6 +66,10 @@ export class ApiStack extends cdk.Stack {
         streamPrefix: 'ecs',
       }),
       portMappings: [{ containerPort: config.containerPort, protocol: ecs.Protocol.TCP }],
+      environment: {
+        NODE_ENV: config.nodeEnvironment,
+        DEPLOYMENT_ENV: config.deploymentEnvironment,
+      },
       secrets: {
         API_RUNTIME_CONFIG: ecs.Secret.fromSecretsManager(security.apiRuntimeSecret),
       },

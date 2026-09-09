@@ -5,17 +5,21 @@ describe('environment configuration', () => {
     const config = getEnvironmentConfig(undefined);
 
     expect(config.name).toBe('dev');
+    expect(config.nodeEnvironment).toBe('production');
+    expect(config.deploymentEnvironment).toBe('dev');
     expect(config.region).toBe('eu-west-2');
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
     expect(config.repositoryRetainedImageCount).toBe(20);
-    expect(resolveApiImageTag(config, undefined)).toBe('0.1.0-8da657e');
+    expect(resolveApiImageTag(config, undefined)).toBe('033dd7d');
   });
 
   test('keeps production settings distinct from development', () => {
     const config = getEnvironmentConfig('prod');
 
     expect(config.name).toBe('prod');
+    expect(config.nodeEnvironment).toBe('production');
+    expect(config.deploymentEnvironment).toBe('prod');
     expect(config.desiredCount).toBeGreaterThan(1);
     expect(config.natGateways).toBeGreaterThan(1);
     expect(config.repositoryRetainedImageCount).toBe(50);
