@@ -50,6 +50,7 @@ describe('Vamberic infrastructure assumptions', () => {
     template.hasResourceProperties('AWS::ECS::Service', {
       DesiredCount: 1,
       LaunchType: 'FARGATE',
+      HealthCheckGracePeriodSeconds: 60,
       NetworkConfiguration: {
         AwsvpcConfiguration: {
           AssignPublicIp: 'DISABLED',
@@ -61,11 +62,26 @@ describe('Vamberic infrastructure assumptions', () => {
     });
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
       HealthCheckPath: '/health',
+      Matcher: {
+        HttpCode: '200-399',
+      },
     });
     template.resourceCountIs('AWS::ECR::Repository', 0);
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
+          HealthCheck: {
+            Command: [
+              'CMD',
+              'node',
+              '-e',
+              "fetch('http://127.0.0.1:3000/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+            ],
+            Interval: 30,
+            Retries: 3,
+            StartPeriod: 30,
+            Timeout: 5,
+          },
           Image: {
             'Fn::Join': ['', Match.arrayWith([':test-abcdef0'])],
           },

@@ -71,8 +71,10 @@ export class ApiStack extends cdk.Stack {
       },
       healthCheck: {
         command: [
-          'CMD-SHELL',
-          `curl -f http://localhost:${config.containerPort}${config.healthCheckPath} || exit 1`,
+          'CMD',
+          'node',
+          '-e',
+          `fetch('http://127.0.0.1:${config.containerPort}${config.healthCheckPath}').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));`,
         ],
         interval: cdk.Duration.seconds(30),
         timeout: cdk.Duration.seconds(5),
