@@ -11,7 +11,7 @@ The initial architecture is designed for separate `dev` and `prod` environments 
 - A VPC with public subnets for the load balancer and private application subnets for ECS tasks.
 - A NAT Gateway with an AWS-managed Elastic IP for predictable outbound traffic to MongoDB Atlas.
 - An ECS cluster running a Fargate service behind a public Application Load Balancer.
-- An ECR repository for the API container image.
+- An independently deployable ECR registry stack for the API container image.
 - Separate task execution and application task IAM roles with least-privilege defaults.
 - A Secrets Manager secret reserved for runtime application configuration.
 - A CloudWatch log group with environment-specific retention.
@@ -27,6 +27,16 @@ Environment configuration lives in `config/`:
 
 - `config/dev.ts` — one low-cost Fargate task and one NAT Gateway.
 - `config/prod.ts` — two initial Fargate tasks and two NAT Gateways for higher availability.
+
+Each environment synthesizes five stacks:
+
+- `VambericDevNetwork` / `VambericProdNetwork`
+- `VambericDevSecurity` / `VambericProdSecurity`
+- `VambericDevObservability` / `VambericProdObservability`
+- `VambericDevRegistry` / `VambericProdRegistry`
+- `VambericDevApi` / `VambericProdApi`
+
+The registry is deliberately separate from the API service. This allows a new account to create the repository, receive an API image, and only then create the Fargate service.
 
 The CDK app synthesizes `dev` by default. Select an environment with either:
 
@@ -62,17 +72,59 @@ npm run diff
 
 `npm run synth` writes CloudFormation templates to `cdk.out/`. It does not create AWS resources.
 
-## Future deployment process
+## First deployment sequence
 
-Deployment is intentionally not configured yet. Before the first deployment:
+Deployment is intentionally not automated or performed by this repository. A brand-new account should be brought up in stages.
 
-1. Confirm the target AWS account and region.
-2. Bootstrap CDK in the target account and region.
-3. Build and publish the API image to the environment's ECR repository.
+The examples below use `dev`; substitute the `Prod` stack names and `-c environment=prod` for production.
+
+1. Confirm the target account and region, then bootstrap CDK:
+
+   ```bash
+   npm run cdk -- bootstrap aws://ACCOUNT_ID/eu-west-2
+   ```
+
+2. Deploy the prerequisite stacks. This creates the network, security controls, logs, and empty ECR repository, but not the ECS service:
+
+   ```bash
+   npm run cdk -- deploy \
+     VambericDevNetwork \
+     VambericDevSecurity \
+     VambericDevObservability \
+     VambericDevRegistry
+   ```
+
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag such as a full Git commit SHA. Do not use `latest`.
+
 4. Populate the runtime secret through an approved secret-management process.
-5. Review `cdk diff` for the selected environment.
-6. Deploy only after an explicit change review.
-7. Add Route 53 and ACM resources separately when the API domain is ready.
+
+5. Review the API change using the exact tag that was pushed:
+
+   ```bash
+   npm run cdk -- diff VambericDevApi -c imageTag=FULL_GIT_COMMIT_SHA
+   ```
+
+6. Deploy the API service with the same immutable tag:
+
+   ```bash
+   npm run cdk -- deploy VambericDevApi -c imageTag=FULL_GIT_COMMIT_SHA
+   ```
+
+The CDK app uses `local-synth-only` when no image tag is supplied so local synthesis remains credential-free. That tag is not intended for deployment. Every real API deployment must provide `-c imageTag=...` or `API_IMAGE_TAG=...`.
+
+CDK dependencies are explicit: security depends on network, and API depends on network, security, observability, and registry. Deploying prerequisites separately is still required so an image can be pushed before ECS begins service stabilization.
+
+## ECR retention and rollback
+
+- Image tags are immutable, preventing an existing release tag from being overwritten.
+- Images are scanned when pushed.
+- Dev retains the 20 most recent tagged images.
+- Prod retains the 50 most recent tagged images.
+- Untagged images expire after seven days.
+- The production repository is retained if its stack is removed.
+- The development repository may be removed with the stack, including its images.
+
+This keeps enough historical releases for rollback without retaining every image indefinitely. Adjust the bounded counts in `config/dev.ts` and `config/prod.ts` if release frequency changes materially.
 
 ## Cost considerations
 

@@ -11,4 +11,5 @@ export const prodConfig: EnvironmentConfig = {
   containerPort: 3000,
   logRetentionDays: 30,
   healthCheckPath: '/health',
+  repositoryRetainedImageCount: 50,
 };

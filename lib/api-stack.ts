@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import type { Construct } from 'constructs';
@@ -9,6 +8,7 @@ import type { EnvironmentConfig } from '../config/environment';
 import { stackName } from '../config/environment';
 import type { NetworkStack } from './network-stack';
 import type { ObservabilityStack } from './observability-stack';
+import type { RegistryStack } from './registry-stack';
 import type { SecurityStack } from './security-stack';
 
 export class ApiStack extends cdk.Stack {
@@ -18,6 +18,8 @@ export class ApiStack extends cdk.Stack {
     network: NetworkStack,
     security: SecurityStack,
     observability: ObservabilityStack,
+    registry: RegistryStack,
+    imageTag: string,
   ) {
     super(scope, stackName(config, 'Api'), {
       env: {
@@ -25,14 +27,6 @@ export class ApiStack extends cdk.Stack {
         region: config.region,
       },
       description: `Vamberic ${config.name} ECS API runtime`,
-    });
-
-    const repository = new ecr.Repository(this, 'ApiRepository', {
-      repositoryName: `vamberic-${config.name}-api`,
-      imageScanOnPush: true,
-      encryption: ecr.RepositoryEncryption.AES_256,
-      removalPolicy: config.name === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      emptyOnDelete: config.name !== 'prod',
     });
 
     const cluster = new ecs.Cluster(this, 'ApiCluster', {
@@ -65,7 +59,7 @@ export class ApiStack extends cdk.Stack {
     });
 
     taskDefinition.addContainer('ApiContainer', {
-      image: ecs.ContainerImage.fromEcrRepository(repository, 'latest'),
+      image: ecs.ContainerImage.fromEcrRepository(registry.apiRepository, imageTag),
       containerName: 'api',
       logging: ecs.LogDrivers.awsLogs({
         logGroup: observability.apiLogGroup,
@@ -122,9 +116,6 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
-    new cdk.CfnOutput(this, 'ApiRepositoryUri', {
-      value: repository.repositoryUri,
-    });
     new cdk.CfnOutput(this, 'ApiLoadBalancerDnsName', {
       value: loadBalancer.loadBalancerDnsName,
     });

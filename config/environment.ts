@@ -15,6 +15,7 @@ export interface EnvironmentConfig {
   readonly containerPort: number;
   readonly logRetentionDays: number;
   readonly healthCheckPath: string;
+  readonly repositoryRetainedImageCount: number;
 }
 
 export function getEnvironmentConfig(name: string | undefined): EnvironmentConfig {

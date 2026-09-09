@@ -1,9 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { getEnvironmentConfig } from '../config/environment';
 import { ApiStack } from '../lib/api-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
+import { RegistryStack } from '../lib/registry-stack';
 import { SecurityStack } from '../lib/security-stack';
 
 function createStacks() {
@@ -12,8 +13,9 @@ function createStacks() {
   const network = new NetworkStack(app, config);
   const security = new SecurityStack(app, config, network);
   const observability = new ObservabilityStack(app, config);
-  const api = new ApiStack(app, config, network, security, observability);
-  return { network, security, observability, api };
+  const registry = new RegistryStack(app, config);
+  const api = new ApiStack(app, config, network, security, observability, registry, 'test-abcdef0');
+  return { network, security, observability, registry, api };
 }
 
 describe('Vamberic infrastructure assumptions', () => {
@@ -59,6 +61,30 @@ describe('Vamberic infrastructure assumptions', () => {
     });
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
       HealthCheckPath: '/health',
+    });
+    template.resourceCountIs('AWS::ECR::Repository', 0);
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Image: {
+            'Fn::Join': ['', Match.arrayWith([':test-abcdef0'])],
+          },
+        }),
+      ]),
+    });
+  });
+
+  test('creates an immutable registry with bounded rollback retention', () => {
+    const template = Template.fromStack(createStacks().registry);
+
+    template.hasResourceProperties('AWS::ECR::Repository', {
+      ImageScanningConfiguration: {
+        ScanOnPush: true,
+      },
+      ImageTagMutability: 'IMMUTABLE',
+      LifecyclePolicy: Match.objectLike({
+        LifecyclePolicyText: Match.anyValue(),
+      }),
     });
   });
 

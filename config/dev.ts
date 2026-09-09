@@ -11,4 +11,5 @@ export const devConfig: EnvironmentConfig = {
   containerPort: 3000,
   logRetentionDays: 7,
   healthCheckPath: '/health',
+  repositoryRetainedImageCount: 20,
 };

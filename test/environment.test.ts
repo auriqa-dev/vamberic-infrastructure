@@ -8,6 +8,7 @@ describe('environment configuration', () => {
     expect(config.region).toBe('eu-west-2');
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
+    expect(config.repositoryRetainedImageCount).toBe(20);
   });
 
   test('keeps production settings distinct from development', () => {
@@ -16,6 +17,7 @@ describe('environment configuration', () => {
     expect(config.name).toBe('prod');
     expect(config.desiredCount).toBeGreaterThan(1);
     expect(config.natGateways).toBeGreaterThan(1);
+    expect(config.repositoryRetainedImageCount).toBe(50);
     expect(stackName(config, 'Api')).toBe('VambericProdApi');
   });
 
