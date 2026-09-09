@@ -12,4 +12,5 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
+  apiImageTag: '0.1.0-8da657e',
 };

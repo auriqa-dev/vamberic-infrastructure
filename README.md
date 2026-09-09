@@ -25,8 +25,8 @@ Route 53 records, ACM certificates, MongoDB connectivity, CI/CD, queues, schedul
 
 Environment configuration lives in `config/`:
 
-- `config/dev.ts` — one low-cost Fargate task and one NAT Gateway.
-- `config/prod.ts` — two initial Fargate tasks and two NAT Gateways for higher availability.
+- `config/dev.ts` — one low-cost Fargate task, one NAT Gateway, and the currently approved immutable API image tag.
+- `config/prod.ts` — two initial Fargate tasks and two NAT Gateways for higher availability. Production intentionally has no default image tag.
 
 Each environment synthesizes five stacks:
 
@@ -94,23 +94,23 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag such as a full Git commit SHA. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `0.1.0-8da657e`. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 
-5. Review the API change using the exact tag that was pushed:
+5. Review the API change. Dev uses its configured tag by default:
 
    ```bash
-   npm run cdk -- diff VambericDevApi -c imageTag=FULL_GIT_COMMIT_SHA
+   npm run cdk -- diff VambericDevApi
    ```
 
-6. Deploy the API service with the same immutable tag:
+6. Deploy the API service with the same configured immutable tag:
 
    ```bash
-   npm run cdk -- deploy VambericDevApi -c imageTag=FULL_GIT_COMMIT_SHA
+   npm run cdk -- deploy VambericDevApi
    ```
 
-The CDK app uses `local-synth-only` when no image tag is supplied so local synthesis remains credential-free. That tag is not intended for deployment. Every real API deployment must provide `-c imageTag=...` or `API_IMAGE_TAG=...`.
+The dev tag is environment-specific and stored in `config/dev.ts`; it is not embedded in the API stack. Production intentionally remains unset and will fail synthesis until a production tag is supplied with `-c imageTag=...` or `API_IMAGE_TAG=...`. Overrides are also available for dev releases. The mutable `latest` tag is rejected in every environment.
 
 CDK dependencies are explicit: security depends on network, and API depends on network, security, observability, and registry. Deploying prerequisites separately is still required so an image can be pushed before ECS begins service stabilization.
 

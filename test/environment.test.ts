@@ -1,4 +1,4 @@
-import { getEnvironmentConfig, stackName } from '../config/environment';
+import { getEnvironmentConfig, resolveApiImageTag, stackName } from '../config/environment';
 
 describe('environment configuration', () => {
   test('defaults to the low-cost London dev environment', () => {
@@ -9,6 +9,7 @@ describe('environment configuration', () => {
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
     expect(config.repositoryRetainedImageCount).toBe(20);
+    expect(resolveApiImageTag(config, undefined)).toBe('0.1.0-8da657e');
   });
 
   test('keeps production settings distinct from development', () => {
@@ -18,7 +19,15 @@ describe('environment configuration', () => {
     expect(config.desiredCount).toBeGreaterThan(1);
     expect(config.natGateways).toBeGreaterThan(1);
     expect(config.repositoryRetainedImageCount).toBe(50);
+    expect(config.apiImageTag).toBeUndefined();
     expect(stackName(config, 'Api')).toBe('VambericProdApi');
+    expect(() => resolveApiImageTag(config, undefined)).toThrow(/No API image tag configured/);
+  });
+
+  test('rejects latest even when provided as an override', () => {
+    expect(() => resolveApiImageTag(getEnvironmentConfig('dev'), 'latest')).toThrow(
+      /not permitted/,
+    );
   });
 
   test('rejects unsupported environments', () => {

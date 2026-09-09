@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { getEnvironmentConfig } from '../config/environment';
+import { getEnvironmentConfig, resolveApiImageTag } from '../config/environment';
 import { ApiStack } from '../lib/api-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
@@ -15,8 +15,10 @@ const config = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION ?? baseConfig.region,
 };
-const imageTag =
-  process.env.API_IMAGE_TAG ?? app.node.tryGetContext('imageTag') ?? 'local-synth-only';
+const imageTag = resolveApiImageTag(
+  config,
+  process.env.API_IMAGE_TAG ?? app.node.tryGetContext('imageTag'),
+);
 
 const network = new NetworkStack(app, config);
 const security = new SecurityStack(app, config, network);

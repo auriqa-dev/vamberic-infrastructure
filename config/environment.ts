@@ -16,6 +16,25 @@ export interface EnvironmentConfig {
   readonly logRetentionDays: number;
   readonly healthCheckPath: string;
   readonly repositoryRetainedImageCount: number;
+  readonly apiImageTag?: string;
+}
+
+export function resolveApiImageTag(
+  config: EnvironmentConfig,
+  override: string | undefined,
+): string {
+  const imageTag = override ?? config.apiImageTag;
+
+  if (!imageTag) {
+    throw new Error(
+      `No API image tag configured for ${config.name}. Provide -c imageTag=... or API_IMAGE_TAG=...`,
+    );
+  }
+  if (imageTag === 'latest') {
+    throw new Error('The mutable "latest" image tag is not permitted.');
+  }
+
+  return imageTag;
 }
 
 export function getEnvironmentConfig(name: string | undefined): EnvironmentConfig {
