@@ -1,0 +1,11 @@
+.agents/
+.conversation/
+.local/
+.cache/
+.upm/
+attached_assets/
+cdk.out/
+coverage/
+dist/
+node_modules/
+package-lock.json
