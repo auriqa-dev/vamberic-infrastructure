@@ -19,7 +19,7 @@ The initial architecture is designed for separate `dev` and `prod` environments 
 
 Product applications and the Vamberic console will call the shared API. They must not connect directly to MongoDB Atlas.
 
-Route 53 records, ACM certificates, MongoDB connectivity, CI/CD, queues, scheduled tasks, and agent infrastructure are intentionally out of scope for this initial project.
+Route 53 records, ACM certificates, MongoDB connectivity, queues, scheduled tasks, and agent infrastructure are intentionally out of scope for this initial project.
 
 ## Environments
 
@@ -54,7 +54,7 @@ Account IDs are never hard-coded. CDK uses the ambient `CDK_DEFAULT_ACCOUNT` whe
 
 ## Prerequisites
 
-- Node.js 20 or newer
+- Node.js 24
 - npm 10 or newer
 - AWS CDK CLI 2.x (`npm run cdk -- --version` uses the local dependency)
 - AWS credentials are only required for future `cdk diff` or `cdk deploy` operations. They are not required for the local build, tests, or synthesis in this repository.
@@ -74,7 +74,7 @@ npm run diff
 
 ## First deployment sequence
 
-Deployment is intentionally not automated or performed by this repository. A brand-new account should be brought up in stages.
+The initial account bootstrap and first staged deployment remain operator-controlled. A brand-new account should be brought up in stages.
 
 The examples below use `dev`; substitute the `Prod` stack names and `-c environment=prod` for production.
 
@@ -94,7 +94,7 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `0.1.0-8da657e`. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `033dd7d`. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 
@@ -113,6 +113,31 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
 The dev tag is environment-specific and stored in `config/dev.ts`; it is not embedded in the API stack. Production intentionally remains unset and will fail synthesis until a production tag is supplied with `-c imageTag=...` or `API_IMAGE_TAG=...`. Overrides are also available for dev releases. The mutable `latest` tag is rejected in every environment.
 
 CDK dependencies are explicit: security depends on network, and API depends on network, security, observability, and registry. Deploying prerequisites separately is still required so an image can be pushed before ECS begins service stabilization.
+
+## GitHub Actions deployment
+
+Development infrastructure can be deployed manually with the **Deploy dev infrastructure** workflow in GitHub Actions. The workflow has only a `workflow_dispatch` trigger, so pushes do not deploy infrastructure automatically.
+
+The deployment model separates development from deployment identity:
+
+- Replit is the development environment used to edit, test, and synthesize the CDK application.
+- GitHub Actions is the deployment identity. Its `dev` Environment assumes an AWS IAM role through GitHub's OpenID Connect provider.
+- No long-lived AWS access keys are stored in this repository or passed to the workflow.
+
+Configure these GitHub repository or `dev` Environment variables before running the workflow:
+
+- `AWS_DEPLOY_ROLE_ARN` — the ARN of the AWS IAM role whose trust policy permits this repository's GitHub OIDC identity to assume it.
+- `AWS_REGION` — the target AWS region, currently `eu-west-2`.
+
+The AWS account must already be bootstrapped for CDK. After checkout and deterministic `npm ci` installation, the workflow runs the build, lint, tests, and synthesis before deploying only:
+
+- `VambericDevNetwork`
+- `VambericDevSecurity`
+- `VambericDevObservability`
+- `VambericDevRegistry`
+- `VambericDevApi`
+
+Deployment uses `--require-approval never` because GitHub Actions is non-interactive. The workflow does not deploy production.
 
 ## ECR retention and rollback
 
