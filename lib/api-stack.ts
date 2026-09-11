@@ -58,6 +58,8 @@ export class ApiStack extends cdk.Stack {
       taskRole,
     });
 
+    security.apiRuntimeSecret.grantRead(executionRole);
+
     taskDefinition.addContainer('ApiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(registry.apiRepository, imageTag),
       containerName: 'api',
@@ -71,7 +73,7 @@ export class ApiStack extends cdk.Stack {
         DEPLOYMENT_ENV: config.deploymentEnvironment,
       },
       secrets: {
-        API_RUNTIME_CONFIG: ecs.Secret.fromSecretsManager(security.apiRuntimeSecret),
+        MONGODB_URI: ecs.Secret.fromSecretsManager(security.apiRuntimeSecret, 'MONGODB_URI'),
       },
       healthCheck: {
         command: [

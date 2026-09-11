@@ -41,7 +41,7 @@ describe('Vamberic infrastructure assumptions', () => {
       FromPort: 3000,
       ToPort: 3000,
     });
-    template.resourceCountIs('AWS::SecretsManager::Secret', 1);
+    template.resourceCountIs('AWS::SecretsManager::Secret', 0);
   });
 
   test('runs the API privately behind a public load balancer', () => {
@@ -80,6 +80,12 @@ describe('Vamberic infrastructure assumptions', () => {
               Value: 'dev',
             },
           ],
+          Secrets: [
+            Match.objectLike({
+              Name: 'MONGODB_URI',
+              ValueFrom: Match.anyValue(),
+            }),
+          ],
           HealthCheck: {
             Command: [
               'CMD',
@@ -97,6 +103,17 @@ describe('Vamberic infrastructure assumptions', () => {
           },
         }),
       ]),
+    });
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
+            Effect: 'Allow',
+            Resource: Match.anyValue(),
+          }),
+        ]),
+      },
     });
   });
 

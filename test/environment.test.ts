@@ -11,7 +11,8 @@ describe('environment configuration', () => {
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
     expect(config.repositoryRetainedImageCount).toBe(20);
-    expect(resolveApiImageTag(config, undefined)).toBe('033dd7d');
+    expect(resolveApiImageTag(config, undefined)).toBe('55cdd32');
+    expect(config.apiRuntimeSecretName).toBe('vamberic/dev/api');
   });
 
   test('keeps production settings distinct from development', () => {
@@ -24,6 +25,7 @@ describe('environment configuration', () => {
     expect(config.natGateways).toBeGreaterThan(1);
     expect(config.repositoryRetainedImageCount).toBe(50);
     expect(config.apiImageTag).toBeUndefined();
+    expect(config.apiRuntimeSecretName).toBeUndefined();
     expect(stackName(config, 'Api')).toBe('VambericProdApi');
     expect(() => resolveApiImageTag(config, undefined)).toThrow(/No API image tag configured/);
   });

@@ -19,6 +19,7 @@ export interface EnvironmentConfig {
   readonly healthCheckPath: string;
   readonly repositoryRetainedImageCount: number;
   readonly apiImageTag?: string;
+  readonly apiRuntimeSecretName?: string;
 }
 
 export function resolveApiImageTag(

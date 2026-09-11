@@ -9,7 +9,7 @@ import type { NetworkStack } from './network-stack';
 export class SecurityStack extends cdk.Stack {
   public readonly loadBalancerSecurityGroup: ec2.SecurityGroup;
   public readonly serviceSecurityGroup: ec2.SecurityGroup;
-  public readonly apiRuntimeSecret: secretsmanager.Secret;
+  public readonly apiRuntimeSecret: secretsmanager.ISecret;
 
   public constructor(scope: Construct, config: EnvironmentConfig, network: NetworkStack) {
     super(scope, stackName(config, 'Security'), {
@@ -44,19 +44,27 @@ export class SecurityStack extends cdk.Stack {
       'Only the public load balancer may reach the API task',
     );
 
-    this.apiRuntimeSecret = new secretsmanager.Secret(this, 'ApiRuntimeSecret', {
-      secretName: `vamberic/${config.name}/api`,
-      description: `Runtime configuration for the Vamberic ${config.name} API`,
-      generateSecretString: {
-        secretStringTemplate: '{}',
-        generateStringKey: 'placeholder',
-        excludePunctuation: true,
-      },
-    });
+    if (config.apiRuntimeSecretName) {
+      this.apiRuntimeSecret = secretsmanager.Secret.fromSecretNameV2(
+        this,
+        'ApiRuntimeSecret',
+        config.apiRuntimeSecretName,
+      );
+    } else {
+      this.apiRuntimeSecret = new secretsmanager.Secret(this, 'ApiRuntimeSecret', {
+        secretName: `vamberic/${config.name}/api`,
+        description: `Runtime configuration for the Vamberic ${config.name} API`,
+        generateSecretString: {
+          secretStringTemplate: '{}',
+          generateStringKey: 'placeholder',
+          excludePunctuation: true,
+        },
+      });
 
-    new cdk.CfnOutput(this, 'ApiRuntimeSecretArn', {
-      value: this.apiRuntimeSecret.secretArn,
-      description: 'Store API runtime configuration here before a future deployment',
-    });
+      new cdk.CfnOutput(this, 'ApiRuntimeSecretArn', {
+        value: this.apiRuntimeSecret.secretArn,
+        description: 'Store API runtime configuration here before a future deployment',
+      });
+    }
   }
 }
