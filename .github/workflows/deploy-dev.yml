@@ -48,9 +48,9 @@ jobs:
       - name: Synthesize dev infrastructure
         run: npm run synth
 
-      - name: Deploy dev infrastructure
+            - name: Deploy dev infrastructure
         run: >-
-        npm run cdk -- deploy
-        VambericDevApi
-        --exclusively
-        --require-approval never
+          npm run cdk -- deploy
+          VambericDevApi
+          --exclusively
+          --require-approval never
