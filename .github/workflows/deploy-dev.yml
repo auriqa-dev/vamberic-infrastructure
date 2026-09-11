@@ -51,6 +51,9 @@ jobs:
       - name: Deploy dev infrastructure
         run: >-
           npm run cdk -- deploy
-          VambericDevSecurity
-          --exclusively
+           VambericDevNetwork
+           VambericDevSecurity
+           VambericDevObservability
+           VambericDevRegistry
+           VambericDevApi
           --require-approval never
