@@ -44,7 +44,13 @@ export class SecurityStack extends cdk.Stack {
       'Only the public load balancer may reach the API task',
     );
 
-    if (config.apiRuntimeSecretName) {
+    if (config.apiRuntimeSecretCompleteArn) {
+      this.apiRuntimeSecret = secretsmanager.Secret.fromSecretCompleteArn(
+        this,
+        'ApiRuntimeSecret',
+        config.apiRuntimeSecretCompleteArn,
+      );
+    } else if (config.apiRuntimeSecretName) {
       this.apiRuntimeSecret = secretsmanager.Secret.fromSecretNameV2(
         this,
         'ApiRuntimeSecret',

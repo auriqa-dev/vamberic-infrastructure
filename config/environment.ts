@@ -20,6 +20,7 @@ export interface EnvironmentConfig {
   readonly repositoryRetainedImageCount: number;
   readonly apiImageTag?: string;
   readonly apiRuntimeSecretName?: string;
+  readonly apiRuntimeSecretCompleteArn?: string;
 }
 
 export function resolveApiImageTag(

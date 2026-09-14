@@ -53,7 +53,7 @@ or:
 npm run cdk -- synth -c environment=prod
 ```
 
-API stack account IDs are not hard-coded. CDK uses the ambient `CDK_DEFAULT_ACCOUNT` when one is available, and otherwise synthesizes environment-agnostic templates. The website configuration contains the supplied ARN of its existing ACM certificate, which necessarily includes the owning AWS account ID. The region defaults to `eu-west-2` and can be overridden with `CDK_DEFAULT_REGION`.
+Stack deployment accounts come from the ambient `CDK_DEFAULT_ACCOUNT` when one is available. Existing-resource configuration contains the supplied complete ARNs for the ACM certificate and dev API runtime secret; those identifiers necessarily include their owning AWS account IDs. The region defaults to `eu-west-2` and can be overridden with `CDK_DEFAULT_REGION`.
 
 ## Production website
 

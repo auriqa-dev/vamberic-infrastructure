@@ -83,10 +83,11 @@ describe('Vamberic infrastructure assumptions', () => {
             },
           ],
           Secrets: [
-            Match.objectLike({
+            {
               Name: 'MONGODB_URI',
-              ValueFrom: Match.anyValue(),
-            }),
+              ValueFrom:
+                'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2:MONGODB_URI::',
+            },
           ],
           HealthCheck: {
             Command: [

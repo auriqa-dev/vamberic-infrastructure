@@ -13,6 +13,9 @@ describe('environment configuration', () => {
     expect(config.repositoryRetainedImageCount).toBe(20);
     expect(resolveApiImageTag(config, undefined)).toBe('e08e110');
     expect(config.apiRuntimeSecretName).toBe('vamberic/dev/api');
+    expect(config.apiRuntimeSecretCompleteArn).toBe(
+      'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
+    );
   });
 
   test('keeps production settings distinct from development', () => {
@@ -26,6 +29,7 @@ describe('environment configuration', () => {
     expect(config.repositoryRetainedImageCount).toBe(50);
     expect(config.apiImageTag).toBeUndefined();
     expect(config.apiRuntimeSecretName).toBeUndefined();
+    expect(config.apiRuntimeSecretCompleteArn).toBeUndefined();
     expect(stackName(config, 'Api')).toBe('VambericProdApi');
     expect(() => resolveApiImageTag(config, undefined)).toThrow(/No API image tag configured/);
   });
