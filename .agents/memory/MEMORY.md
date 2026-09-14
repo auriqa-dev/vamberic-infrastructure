@@ -1,1 +1,2 @@
 - [ECS secret ARN imports](ecs-secret-arn-imports.md) — JSON-key injection requires the existing secret’s complete suffixed ARN; name imports produced a failing partial ARN.
+- [ECS execution-policy ordering](ecs-execution-policy-ordering.md) — make task-definition registration depend on lazy execution-role policies needed before container startup.

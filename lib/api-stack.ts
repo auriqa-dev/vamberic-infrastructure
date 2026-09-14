@@ -58,7 +58,21 @@ export class ApiStack extends cdk.Stack {
       taskRole,
     });
 
-    security.apiRuntimeSecret.grantRead(executionRole);
+    const taskExecutionRole = taskDefinition.executionRole;
+    if (!taskExecutionRole) {
+      throw new Error('The API task definition must have an execution role.');
+    }
+    const secretReadGrant = security.apiRuntimeSecret.grantRead(taskExecutionRole);
+    const cfnTaskDefinition = taskDefinition.node.defaultChild;
+    if (!(cfnTaskDefinition instanceof ecs.CfnTaskDefinition)) {
+      throw new Error('The API task definition must synthesize an ECS task definition resource.');
+    }
+    secretReadGrant.assertSuccess();
+    const taskExecutionPolicy = taskExecutionRole.node.tryFindChild('DefaultPolicy');
+    if (!(taskExecutionPolicy instanceof iam.Policy)) {
+      throw new Error('The API task execution role must synthesize a default policy.');
+    }
+    cfnTaskDefinition.node.addDependency(taskExecutionPolicy);
 
     taskDefinition.addContainer('ApiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(registry.apiRepository, imageTag),

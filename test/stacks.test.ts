@@ -107,17 +107,41 @@ describe('Vamberic infrastructure assumptions', () => {
         }),
       ]),
     });
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
-            Effect: 'Allow',
-            Resource: Match.anyValue(),
-          }),
-        ]),
-      },
-    });
+    const roles = template.findResources('AWS::IAM::Role');
+    const executionRoleEntry = Object.entries(roles).find(
+      ([, role]) => role.Properties.RoleName === 'vamberic-dev-api-execution',
+    );
+    const taskRoleEntry = Object.entries(roles).find(
+      ([, role]) => role.Properties.RoleName === 'vamberic-dev-api-task',
+    );
+    expect(executionRoleEntry).toBeDefined();
+    expect(taskRoleEntry).toBeDefined();
+
+    const policies = template.findResources('AWS::IAM::Policy');
+    const secretPolicyEntry = Object.entries(policies).find(([, policy]) =>
+      policy.Properties.PolicyDocument.Statement.some(
+        (statement: { Action?: string | string[] }) =>
+          statement.Action === 'secretsmanager:GetSecretValue' ||
+          statement.Action?.includes('secretsmanager:GetSecretValue'),
+      ),
+    );
+    expect(secretPolicyEntry).toBeDefined();
+
+    const [executionRoleLogicalId] = executionRoleEntry!;
+    const [taskRoleLogicalId] = taskRoleEntry!;
+    const [secretPolicyLogicalId, secretPolicy] = secretPolicyEntry!;
+    expect(secretPolicy.Properties.Roles).toEqual([{ Ref: executionRoleLogicalId }]);
+    expect(secretPolicy.Properties.Roles).not.toContainEqual({ Ref: taskRoleLogicalId });
+    expect(secretPolicy.Properties.PolicyDocument.Statement).toContainEqual(
+      expect.objectContaining({
+        Action: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
+        Effect: 'Allow',
+        Resource: 'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
+      }),
+    );
+
+    const taskDefinitions = template.findResources('AWS::ECS::TaskDefinition');
+    expect(Object.values(taskDefinitions)[0].DependsOn).toContain(secretPolicyLogicalId);
     template.hasOutput('ApiClusterName', {
       Value: {
         Ref: Match.stringLikeRegexp('ApiCluster'),
