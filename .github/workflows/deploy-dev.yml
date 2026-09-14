@@ -49,8 +49,4 @@ jobs:
         run: npm run synth
         
       - name: Deploy website infrastructure
-        run: >-
-          npm run cdk -- deploy
-          VambericProdWebsite
-           --exclusively
-           --require-approval never  
+        run: npm run cdk -- deploy VambericProdWebsite --require-approval never  
