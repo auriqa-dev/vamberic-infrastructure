@@ -1,11 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { getEnvironmentConfig } from '../config/environment';
+import { websiteConfig } from '../config/website';
 import { ApiStack } from '../lib/api-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
 import { RegistryStack } from '../lib/registry-stack';
 import { SecurityStack } from '../lib/security-stack';
+import { WebsiteStack } from '../lib/website-stack';
 
 function createStacks() {
   const app = new cdk.App();
@@ -143,5 +145,113 @@ describe('Vamberic infrastructure assumptions', () => {
       },
       DeletionPolicy: 'Retain',
     });
+  });
+
+  test('hosts the production website privately behind CloudFront', () => {
+    const app = new cdk.App();
+    const website = new WebsiteStack(app, websiteConfig);
+    const template = Template.fromStack(website);
+
+    template.hasResource('AWS::S3::Bucket', {
+      Properties: {
+        BucketEncryption: {
+          ServerSideEncryptionConfiguration: [
+            {
+              ServerSideEncryptionByDefault: {
+                SSEAlgorithm: 'AES256',
+              },
+            },
+          ],
+        },
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        },
+      },
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+    const buckets = template.findResources('AWS::S3::Bucket');
+    expect(Object.values(buckets)[0].Properties).not.toHaveProperty('WebsiteConfiguration');
+    template.hasResourceProperties('AWS::S3::BucketPolicy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 's3:*',
+            Condition: {
+              Bool: {
+                'aws:SecureTransport': 'false',
+              },
+            },
+            Effect: 'Deny',
+          }),
+          Match.objectLike({
+            Action: 's3:GetObject',
+            Condition: {
+              StringEquals: {
+                'AWS:SourceArn': Match.anyValue(),
+              },
+            },
+            Effect: 'Allow',
+            Principal: {
+              Service: 'cloudfront.amazonaws.com',
+            },
+          }),
+        ]),
+      },
+    });
+    template.hasResourceProperties('AWS::CloudFront::OriginAccessControl', {
+      OriginAccessControlConfig: Match.objectLike({
+        OriginAccessControlOriginType: 's3',
+        SigningBehavior: 'always',
+        SigningProtocol: 'sigv4',
+      }),
+    });
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        Aliases: ['www.vamberic.com'],
+        CustomErrorResponses: [
+          {
+            ErrorCachingMinTTL: 0,
+            ErrorCode: 403,
+            ResponseCode: 200,
+            ResponsePagePath: '/index.html',
+          },
+          {
+            ErrorCachingMinTTL: 0,
+            ErrorCode: 404,
+            ResponseCode: 200,
+            ResponsePagePath: '/index.html',
+          },
+        ],
+        DefaultCacheBehavior: Match.objectLike({
+          Compress: true,
+          ViewerProtocolPolicy: 'redirect-to-https',
+        }),
+        DefaultRootObject: 'index.html',
+        Enabled: true,
+        Origins: Match.arrayWith([
+          Match.objectLike({
+            OriginAccessControlId: Match.anyValue(),
+            S3OriginConfig: {
+              OriginAccessIdentity: '',
+            },
+          }),
+        ]),
+        ViewerCertificate: Match.objectLike({
+          AcmCertificateArn: websiteConfig.certificateArn,
+          SslSupportMethod: 'sni-only',
+        }),
+      }),
+    });
+    template.resourceCountIs('AWS::EC2::Instance', 0);
+    template.resourceCountIs('AWS::ECS::Service', 0);
+    template.resourceCountIs('AWS::Lambda::Function', 0);
+    template.resourceCountIs('AWS::ApiGateway::RestApi', 0);
+    template.hasOutput('WebsiteBucketName', {});
+    template.hasOutput('WebsiteDistributionId', {});
+    template.hasOutput('WebsiteDistributionDomainName', {});
   });
 });

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 import { getEnvironmentConfig, resolveApiImageTag } from '../config/environment';
+import { websiteConfig } from '../config/website';
 import { ApiStack } from '../lib/api-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
 import { RegistryStack } from '../lib/registry-stack';
 import { SecurityStack } from '../lib/security-stack';
+import { WebsiteStack } from '../lib/website-stack';
 
 const app = new cdk.App();
 const environmentName = process.env.DEPLOY_ENV ?? app.node.tryGetContext('environment');
@@ -25,6 +27,10 @@ const security = new SecurityStack(app, config, network);
 const observability = new ObservabilityStack(app, config);
 const registry = new RegistryStack(app, config);
 const api = new ApiStack(app, config, network, security, observability, registry, imageTag);
+new WebsiteStack(app, {
+  ...websiteConfig,
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+});
 
 security.addStackDependency(network);
 api.addStackDependency(network);

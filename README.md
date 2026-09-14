@@ -1,8 +1,8 @@
 # Vamberic Infrastructure
 
-AWS CDK v2 infrastructure for the Vamberic Studio shared API runtime.
+AWS CDK v2 infrastructure for the Vamberic Studio shared API runtime and public website.
 
-This repository is intentionally infrastructure-only. It defines the AWS resources that will eventually host the shared API, but it does not deploy anything by default and it does not connect to MongoDB Atlas.
+This repository is intentionally infrastructure-only. It defines AWS resources, but it does not deploy anything by default and it does not connect to MongoDB Atlas.
 
 ## Architecture
 
@@ -16,10 +16,11 @@ The initial architecture is designed for separate `dev` and `prod` environments 
 - A Secrets Manager secret reserved for runtime application configuration.
 - A CloudWatch log group with environment-specific retention.
 - An ALB health check at `/health`.
+- A production static website served from a private S3 bucket through CloudFront.
 
 Product applications and the Vamberic console will call the shared API. They must not connect directly to MongoDB Atlas.
 
-Route 53 records, ACM certificates, MongoDB connectivity, queues, scheduled tasks, and agent infrastructure are intentionally out of scope for this initial project.
+Route 53 records, new ACM certificates, MongoDB connectivity, queues, scheduled tasks, and agent infrastructure are intentionally out of scope. The website stack uses an existing CloudFront-compatible ACM certificate in `us-east-1`.
 
 ## Environments
 
@@ -36,6 +37,8 @@ Each environment synthesizes five stacks:
 - `VambericDevRegistry` / `VambericProdRegistry`
 - `VambericDevApi` / `VambericProdApi`
 
+The CDK application also synthesizes `VambericProdWebsite`, a logically separate production stack for `www.vamberic.com`. It is not part of the dev API deployment workflow.
+
 The registry is deliberately separate from the API service. This allows a new account to create the repository, receive an API image, and only then create the Fargate service.
 
 The CDK app synthesizes `dev` by default. Select an environment with either:
@@ -50,7 +53,27 @@ or:
 npm run cdk -- synth -c environment=prod
 ```
 
-Account IDs are never hard-coded. CDK uses the ambient `CDK_DEFAULT_ACCOUNT` when one is available, and otherwise synthesizes environment-agnostic templates. The region defaults to `eu-west-2` and can be overridden with `CDK_DEFAULT_REGION`.
+API stack account IDs are not hard-coded. CDK uses the ambient `CDK_DEFAULT_ACCOUNT` when one is available, and otherwise synthesizes environment-agnostic templates. The website configuration contains the supplied ARN of its existing ACM certificate, which necessarily includes the owning AWS account ID. The region defaults to `eu-west-2` and can be overridden with `CDK_DEFAULT_REGION`.
+
+## Production website
+
+`VambericProdWebsite` contains:
+
+- A private, S3-managed encrypted bucket with all public access blocked and a retain policy.
+- A CloudFront distribution for `www.vamberic.com`.
+- CloudFront Origin Access Control for signed access to the private bucket.
+- The existing `us-east-1` ACM certificate configured in `config/website.ts`.
+- HTTP-to-HTTPS redirection, compression, and `index.html` as the default root object.
+- HTTP 403 and 404 responses mapped to `/index.html` with status 200 for client-side routes.
+
+The stack outputs the bucket name, distribution ID, and distribution domain name. It does not create DNS records, upload website assets, or configure `app.vamberic.com`. The website source remains in `auriqa-dev/vamberic`; its deployment process should upload `dist/public` to the emitted bucket and invalidate CloudFront after a production build.
+
+Review and deploy the website independently:
+
+```bash
+npm run cdk -- diff VambericProdWebsite
+npm run cdk -- deploy VambericProdWebsite --exclusively
+```
 
 ## Prerequisites
 
@@ -94,7 +117,7 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `033dd7d`. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `55cdd32`. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 
@@ -162,5 +185,7 @@ Synthesis and tests have no AWS cost. A future deployment may incur ongoing cost
 - CloudWatch log ingestion and storage.
 - Secrets Manager monthly secret storage and API calls.
 - VPC public IPv4 address charges, including NAT Gateway Elastic IPs.
+- S3 website asset storage and requests.
+- CloudFront data transfer, requests, and invalidations beyond the free allowance.
 
 The dev configuration deliberately starts with one Fargate task and one NAT Gateway, but the NAT Gateway and ALB still incur charges while deployed.
