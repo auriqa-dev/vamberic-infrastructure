@@ -37,7 +37,7 @@ Each environment synthesizes five stacks:
 - `VambericDevRegistry` / `VambericProdRegistry`
 - `VambericDevApi` / `VambericProdApi`
 
-The CDK application also synthesizes `VambericProdWebsite`, a logically separate production stack for `www.vamberic.com`. It is not part of the dev API deployment workflow.
+Development also synthesizes `VambericDevApiBootstrap`, a standalone IAM bootstrap stack for the existing API execution role. The CDK application also synthesizes `VambericProdWebsite`, a logically separate production stack for `www.vamberic.com`. Neither stack is part of the dev API deployment workflow.
 
 The registry is deliberately separate from the API service. This allows a new account to create the repository, receive an API image, and only then create the Fargate service.
 
@@ -121,13 +121,21 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
 
 4. Populate the runtime secret through an approved secret-management process.
 
-5. Review the API change. Dev uses its configured tag by default:
+5. Bootstrap the existing dev API execution role's runtime-secret access without deploying the API:
+
+   ```bash
+   npm run cdk -- deploy VambericDevApiBootstrap --require-approval never
+   ```
+
+   This standalone stack only attaches the scoped Secrets Manager read policy to `vamberic-dev-api-execution`. It does not register a task definition, update the ECS service, or start a task.
+
+6. Review the API change. Dev uses its configured tag by default:
 
    ```bash
    npm run cdk -- diff VambericDevApi
    ```
 
-6. Deploy the API service with the same configured immutable tag:
+7. Deploy the API service with the same configured immutable tag:
 
    ```bash
    npm run cdk -- deploy VambericDevApi

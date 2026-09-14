@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { getEnvironmentConfig, resolveApiImageTag } from '../config/environment';
 import { websiteConfig } from '../config/website';
+import { ApiBootstrapStack } from '../lib/api-bootstrap-stack';
 import { ApiStack } from '../lib/api-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
@@ -26,6 +27,9 @@ const network = new NetworkStack(app, config);
 const security = new SecurityStack(app, config, network);
 const observability = new ObservabilityStack(app, config);
 const registry = new RegistryStack(app, config);
+if (config.name === 'dev') {
+  new ApiBootstrapStack(app, config);
+}
 const api = new ApiStack(app, config, network, security, observability, registry, imageTag);
 new WebsiteStack(app, {
   ...websiteConfig,
