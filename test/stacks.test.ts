@@ -117,6 +117,39 @@ describe('Vamberic infrastructure assumptions', () => {
         ]),
       },
     });
+    template.hasOutput('ApiClusterName', {
+      Value: {
+        Ref: Match.stringLikeRegexp('ApiCluster'),
+      },
+    });
+    template.hasOutput('ApiTaskDefinitionArn', {
+      Value: {
+        Ref: Match.stringLikeRegexp('ApiTaskDefinition'),
+      },
+    });
+    template.hasOutput('ApiPrivateSubnetIds', {
+      Value: {
+        'Fn::Join': [
+          ',',
+          Match.arrayWith([
+            Match.objectLike({
+              'Fn::ImportValue': Match.stringLikeRegexp('applicationSubnet1Subnet'),
+            }),
+            Match.objectLike({
+              'Fn::ImportValue': Match.stringLikeRegexp('applicationSubnet2Subnet'),
+            }),
+          ]),
+        ],
+      },
+    });
+    template.hasOutput('ApiTaskSecurityGroupId', {
+      Value: {
+        'Fn::ImportValue': Match.stringLikeRegexp('ServiceSecurityGroup'),
+      },
+    });
+    template.hasOutput('ApiContainerName', {
+      Value: 'api',
+    });
   });
 
   test('creates an immutable registry with bounded rollback retention', () => {

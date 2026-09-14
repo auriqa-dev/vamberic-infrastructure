@@ -127,5 +127,30 @@ export class ApiStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiLoadBalancerDnsName', {
       value: loadBalancer.loadBalancerDnsName,
     });
+    new cdk.CfnOutput(this, 'ApiClusterName', {
+      value: cluster.clusterName,
+      description: 'ECS cluster for API services and operator-run one-off tasks',
+    });
+    new cdk.CfnOutput(this, 'ApiTaskDefinitionArn', {
+      value: taskDefinition.taskDefinitionArn,
+      description: 'API task definition to reuse with a container command override',
+    });
+    new cdk.CfnOutput(this, 'ApiPrivateSubnetIds', {
+      value: cdk.Fn.join(
+        ',',
+        network.vpc.selectSubnets({
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        }).subnetIds,
+      ),
+      description: 'Comma-separated private application subnet IDs for one-off Fargate tasks',
+    });
+    new cdk.CfnOutput(this, 'ApiTaskSecurityGroupId', {
+      value: security.serviceSecurityGroup.securityGroupId,
+      description: 'Security group for API services and one-off Fargate tasks',
+    });
+    new cdk.CfnOutput(this, 'ApiContainerName', {
+      value: 'api',
+      description: 'Container name to target in an ECS command override',
+    });
   }
 }

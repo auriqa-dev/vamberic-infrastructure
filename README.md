@@ -117,7 +117,7 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `55cdd32`. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `e08e110`. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 
@@ -136,6 +136,46 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
 The dev tag is environment-specific and stored in `config/dev.ts`; it is not embedded in the API stack. Production intentionally remains unset and will fail synthesis until a production tag is supplied with `-c imageTag=...` or `API_IMAGE_TAG=...`. Overrides are also available for dev releases. The mutable `latest` tag is rejected in every environment.
 
 CDK dependencies are explicit: security depends on network, and API depends on network, security, observability, and registry. Deploying prerequisites separately is still required so an image can be pushed before ECS begins service stabilization.
+
+## One-off dev API tasks
+
+`VambericDevApi` outputs the values needed to reuse the deployed API task definition for an operator-run Fargate task:
+
+- `ApiClusterName`
+- `ApiTaskDefinitionArn`
+- `ApiPrivateSubnetIds`
+- `ApiTaskSecurityGroupId`
+- `ApiContainerName`
+
+Reusing this task definition preserves its ECR access, CloudWatch logging, `NODE_ENV=production`, `DEPLOYMENT_ENV=dev`, and `MONGODB_URI` injection from `vamberic/dev/api`. A container command override does not alter the API service's default command.
+
+After deploying the infrastructure change, an authorized operator can read those outputs and run the database setup dry-run in the same private application subnets and security group:
+
+```bash
+STACK_NAME=VambericDevApi
+
+CLUSTER_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiClusterName'].OutputValue" --output text)
+TASK_DEFINITION_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiTaskDefinitionArn'].OutputValue" --output text)
+SUBNET_IDS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiPrivateSubnetIds'].OutputValue" --output text)
+SECURITY_GROUP_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiTaskSecurityGroupId'].OutputValue" --output text)
+CONTAINER_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiContainerName'].OutputValue" --output text)
+
+aws ecs run-task \
+  --cluster "$CLUSTER_NAME" \
+  --task-definition "$TASK_DEFINITION_ARN" \
+  --launch-type FARGATE \
+  --network-configuration \
+    "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=DISABLED}" \
+  --overrides \
+    "{\"containerOverrides\":[{\"name\":\"$CONTAINER_NAME\",\"command\":[\"node\",\"--enable-source-maps\",\"/app/dist/db-setup.mjs\",\"--dry-run\"]}]}"
+```
+
+The operator identity needs `cloudformation:DescribeStacks`, `ecs:RunTask`, and `iam:PassRole` for the API task execution and application task roles. `ecs:DescribeTasks` and CloudWatch Logs read access are useful for monitoring the result. Do not include secret values in command overrides or shell output.
 
 ## GitHub Actions deployment
 

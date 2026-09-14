@@ -11,7 +11,7 @@ describe('environment configuration', () => {
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
     expect(config.repositoryRetainedImageCount).toBe(20);
-    expect(resolveApiImageTag(config, undefined)).toBe('55cdd32');
+    expect(resolveApiImageTag(config, undefined)).toBe('e08e110');
     expect(config.apiRuntimeSecretName).toBe('vamberic/dev/api');
   });
 
