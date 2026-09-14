@@ -1,0 +1,1 @@
+- [ECS secret ARN imports](ecs-secret-arn-imports.md) — JSON-key injection requires the existing secret’s complete suffixed ARN; name imports produced a failing partial ARN.
