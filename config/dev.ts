@@ -14,7 +14,7 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
-  apiImageTag: '55cdd32',
+  apiImageTag: 'e08e110',
   apiRuntimeSecretName: 'vamberic/dev/api',
   apiRuntimeSecretCompleteArn:
     'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
