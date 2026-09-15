@@ -65,7 +65,7 @@ jobs:
           aws iam simulate-principal-policy \
             --policy-source-arn arn:aws:iam::755905325223:role/vamberic-dev-api-execution \
             --action-names secretsmanager:GetSecretValue secretsmanager:DescribeSecret \
-            --resource-arns arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2 \
+            --resource-arns arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL \
             --output json
 
       - name: Find all Vamberic secrets
