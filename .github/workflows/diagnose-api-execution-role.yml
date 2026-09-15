@@ -68,9 +68,13 @@ jobs:
             --resource-arns arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2 \
             --output json
 
-      - name: Describe secret metadata
+      - name: Find Vamberic API secret
         run: |
-          aws secretsmanager describe-secret \
-            --secret-id arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2 \
-            --query '{ARN:ARN,Name:Name,KmsKeyId:KmsKeyId}' \
-            --output json
+          echo "AWS identity:"
+          aws sts get-caller-identity
+
+          echo "Matching secrets in eu-west-2:"
+          aws secretsmanager list-secrets \
+            --region eu-west-2 \
+            --query "SecretList[?Name=='vamberic/dev/api'].[Name,ARN]" \
+            --output table
