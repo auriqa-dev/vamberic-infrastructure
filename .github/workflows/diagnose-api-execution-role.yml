@@ -1,0 +1,76 @@
+name: Diagnose API Execution Role
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::755905325223:role/VambericGitHubInfrastructureDeployRole
+          aws-region: eu-west-2
+
+      - name: Get execution role and permissions boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws iam get-role \
+            --role-name vamberic-dev-api-execution \
+            --output json | tee execution-role.json
+
+          if jq -e '.Role.PermissionsBoundary' execution-role.json >/dev/null; then
+            echo "PermissionsBoundary:"
+            jq '.Role.PermissionsBoundary' execution-role.json
+          else
+            echo "PermissionsBoundary: none"
+          fi
+
+      - name: List inline role policies
+        run: |
+          aws iam list-role-policies \
+            --role-name vamberic-dev-api-execution \
+            --output json
+
+      - name: List attached managed policies
+        run: |
+          aws iam list-attached-role-policies \
+            --role-name vamberic-dev-api-execution \
+            --output json
+
+      - name: Get bootstrap inline policy
+        run: |
+          aws iam get-role-policy \
+            --role-name vamberic-dev-api-execution \
+            --policy-name ApiExecutionRolePolicy3461426D \
+            --output json
+
+      - name: Get API stack inline policy
+        run: |
+          aws iam get-role-policy \
+            --role-name vamberic-dev-api-execution \
+            --policy-name TaskExecutionRoleDefaultPolicyA84DD1B0 \
+            --output json
+
+      - name: Simulate Secrets Manager access
+        run: |
+          aws iam simulate-principal-policy \
+            --policy-source-arn arn:aws:iam::755905325223:role/vamberic-dev-api-execution \
+            --action-names secretsmanager:GetSecretValue secretsmanager:DescribeSecret \
+            --resource-arns arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2 \
+            --output json
+
+      - name: Describe secret metadata
+        run: |
+          aws secretsmanager describe-secret \
+            --secret-id arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2 \
+            --query '{ARN:ARN,Name:Name,KmsKeyId:KmsKeyId}' \
+            --output json
