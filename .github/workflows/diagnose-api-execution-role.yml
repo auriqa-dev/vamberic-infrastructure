@@ -71,11 +71,9 @@ jobs:
       - name: Find all Vamberic secrets
         run: |
           echo "Vamberic secrets in eu-west-2:"
-          aws secretsmanager list-secrets \
-          --region eu-west-2 \
-          --include-planned-deletion \
-          --query "SecretList[?contains(Name, 'vamberic')].[Name,ARN,DeletedDate]" \
-          --output table
-            --region eu-west-2 \
-            --query "SecretList[?Name=='vamberic/dev/api'].[Name,ARN]" \
-            --output table
+          aws secretsmanager list-secrets --region eu-west-2 --include-planned-deletion --query "SecretList[?contains(Name, 'vamberic')].[Name,ARN,DeletedDate]" --output table
+      
+      - name: Check eu-west-1
+        run: |
+          echo "Vamberic secrets in eu-west-1:"
+          aws secretsmanager list-secrets --region eu-west-1 --include-planned-deletion --query "SecretList[?contains(Name, 'vamberic')].[Name,ARN,DeletedDate]" --output table
