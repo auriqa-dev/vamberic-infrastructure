@@ -44,6 +44,10 @@ export class SecurityStack extends cdk.Stack {
       'Only the public load balancer may reach the API task',
     );
 
+    if (config.name === 'dev' && !config.apiRuntimeSecretCompleteArn) {
+      throw new Error('The dev API runtime secret must be imported by complete ARN.');
+    }
+
     if (config.apiRuntimeSecretCompleteArn) {
       this.apiRuntimeSecret = secretsmanager.Secret.fromSecretCompleteArn(
         this,

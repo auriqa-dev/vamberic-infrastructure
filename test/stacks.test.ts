@@ -92,6 +92,19 @@ describe('Vamberic infrastructure assumptions', () => {
     template.resourceCountIs('AWS::SecretsManager::Secret', 0);
   });
 
+  test('requires the complete runtime secret ARN for development', () => {
+    const app = new cdk.App();
+    const config = {
+      ...getEnvironmentConfig('dev'),
+      apiRuntimeSecretCompleteArn: undefined,
+    };
+    const network = new NetworkStack(app, config);
+
+    expect(() => new SecurityStack(app, config, network)).toThrow(
+      /must be imported by complete ARN/,
+    );
+  });
+
   test('runs the API privately behind a public load balancer', () => {
     const template = Template.fromStack(createStacks().api);
 
@@ -184,6 +197,9 @@ describe('Vamberic infrastructure assumptions', () => {
         Effect: 'Allow',
         Resource: 'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
       }),
+    );
+    expect(JSON.stringify(secretPolicy.Properties.PolicyDocument.Statement)).not.toContain(
+      '??????',
     );
 
     const taskDefinitions = template.findResources('AWS::ECS::TaskDefinition');
