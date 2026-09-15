@@ -17,5 +17,5 @@ export const devConfig: EnvironmentConfig = {
   apiImageTag: '55cdd32',
   apiRuntimeSecretName: 'vamberic/dev/api',
   apiRuntimeSecretCompleteArn:
-    'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
+    'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
 };

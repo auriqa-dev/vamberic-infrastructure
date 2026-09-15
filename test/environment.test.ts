@@ -14,7 +14,7 @@ describe('environment configuration', () => {
     expect(resolveApiImageTag(config, undefined)).toBe('55cdd32');
     expect(config.apiRuntimeSecretName).toBe('vamberic/dev/api');
     expect(config.apiRuntimeSecretCompleteArn).toBe(
-      'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
+      'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
     );
   });
 

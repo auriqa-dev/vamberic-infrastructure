@@ -39,7 +39,7 @@ describe('Vamberic infrastructure assumptions', () => {
             Action: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
             Effect: 'Allow',
             Resource:
-              'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
+              'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
           },
         ],
         Version: '2012-10-17',
@@ -145,7 +145,7 @@ describe('Vamberic infrastructure assumptions', () => {
             {
               Name: 'MONGODB_URI',
               ValueFrom:
-                'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2:MONGODB_URI::',
+                'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL:MONGODB_URI::',
             },
           ],
           HealthCheck: {
@@ -195,7 +195,7 @@ describe('Vamberic infrastructure assumptions', () => {
       expect.objectContaining({
         Action: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
         Effect: 'Allow',
-        Resource: 'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2',
+        Resource: 'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
       }),
     );
     expect(JSON.stringify(secretPolicy.Properties.PolicyDocument.Statement)).not.toContain(
