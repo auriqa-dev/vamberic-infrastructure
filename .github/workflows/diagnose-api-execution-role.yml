@@ -68,13 +68,14 @@ jobs:
             --resource-arns arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-Qx8NL2 \
             --output json
 
-      - name: Find Vamberic API secret
+      - name: Find all Vamberic secrets
         run: |
-          echo "AWS identity:"
-          aws sts get-caller-identity
-
-          echo "Matching secrets in eu-west-2:"
+          echo "Vamberic secrets in eu-west-2:"
           aws secretsmanager list-secrets \
+          --region eu-west-2 \
+          --include-planned-deletion \
+          --query "SecretList[?contains(Name, 'vamberic')].[Name,ARN,DeletedDate]" \
+          --output table
             --region eu-west-2 \
             --query "SecretList[?Name=='vamberic/dev/api'].[Name,ARN]" \
             --output table
