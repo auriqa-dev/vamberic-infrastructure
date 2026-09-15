@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { getEnvironmentConfig } from '../config/environment';
 import { websiteConfig } from '../config/website';
-import { ApiBootstrapStack } from '../lib/api-bootstrap-stack';
 import { ApiStack } from '../lib/api-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
@@ -17,56 +16,11 @@ function createStacks() {
   const security = new SecurityStack(app, config, network);
   const observability = new ObservabilityStack(app, config);
   const registry = new RegistryStack(app, config);
-  const apiBootstrap = new ApiBootstrapStack(app, config);
   const api = new ApiStack(app, config, network, security, observability, registry, 'test-abcdef0');
-  return { network, security, observability, registry, apiBootstrap, api };
+  return { network, security, observability, registry, api };
 }
 
 describe('Vamberic infrastructure assumptions', () => {
-  test('bootstraps dev secret access without creating or updating ECS resources', () => {
-    const { apiBootstrap } = createStacks();
-    const template = Template.fromStack(apiBootstrap);
-
-    template.resourceCountIs('AWS::IAM::Policy', 1);
-    template.resourceCountIs('AWS::IAM::Role', 0);
-    template.resourceCountIs('AWS::SecretsManager::Secret', 0);
-    template.resourceCountIs('AWS::ECS::TaskDefinition', 0);
-    template.resourceCountIs('AWS::ECS::Service', 0);
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: [
-          {
-            Action: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
-            Effect: 'Allow',
-            Resource:
-              'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
-          },
-        ],
-        Version: '2012-10-17',
-      },
-      Roles: ['vamberic-dev-api-execution'],
-    });
-
-    const assembly = (apiBootstrap.node.root as cdk.App).synth();
-    const artifact = assembly.getStackArtifact(apiBootstrap.artifactId);
-    expect(artifact.environment.account).toBe('755905325223');
-    expect(artifact.environment.region).toBe('eu-west-2');
-    expect(artifact.dependencies.map((dependency) => dependency.id)).not.toContain(
-      'VambericDevApi',
-    );
-    expect(artifact.dependencies.map((dependency) => dependency.id)).not.toContain(
-      'VambericProdApi',
-    );
-  });
-
-  test('does not support creating the API bootstrap stack for production', () => {
-    const app = new cdk.App();
-
-    expect(() => new ApiBootstrapStack(app, getEnvironmentConfig('prod'))).toThrow(
-      /only supported for development/,
-    );
-  });
-
   test('creates public and private network capacity with a NAT gateway', () => {
     const template = Template.fromStack(createStacks().network);
 
