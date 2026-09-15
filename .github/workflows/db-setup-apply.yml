@@ -1,0 +1,163 @@
+name: Vapp Database Schema Apply
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply-database-schema:
+    name: Apply Vapp database schema
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::755905325223:role/VambericGitHubInfrastructureDeployRole
+          aws-region: eu-west-2
+
+      - name: Run database schema apply
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cluster="vamberic-dev-api"
+          task_definition="arn:aws:ecs:eu-west-2:755905325223:task-definition/vamberic-dev-api:13"
+          container_name="api"
+          expected_log_group="/vamberic/dev/api"
+
+          task_definition_json="$(aws ecs describe-task-definition \
+            --task-definition "$task_definition" \
+            --query taskDefinition \
+            --output json)"
+
+          log_driver="$(jq -r \
+            --arg container "$container_name" \
+            '.containerDefinitions[] | select(.name == $container) | .logConfiguration.logDriver // empty' \
+            <<<"$task_definition_json")"
+          log_group="$(jq -r \
+            --arg container "$container_name" \
+            '.containerDefinitions[] | select(.name == $container) | .logConfiguration.options["awslogs-group"] // empty' \
+            <<<"$task_definition_json")"
+          log_region="$(jq -r \
+            --arg container "$container_name" \
+            '.containerDefinitions[] | select(.name == $container) | .logConfiguration.options["awslogs-region"] // empty' \
+            <<<"$task_definition_json")"
+          log_stream_prefix="$(jq -r \
+            --arg container "$container_name" \
+            '.containerDefinitions[] | select(.name == $container) | .logConfiguration.options["awslogs-stream-prefix"] // empty' \
+            <<<"$task_definition_json")"
+
+          if [[ "$log_driver" != "awslogs" || -z "$log_stream_prefix" || -z "$log_region" ]]; then
+            echo "The api container does not have a complete awslogs configuration." >&2
+            exit 1
+          fi
+          if [[ "$log_group" != "$expected_log_group" ]]; then
+            echo "Expected log group $expected_log_group but task definition uses $log_group." >&2
+            exit 1
+          fi
+
+          overrides='{"containerOverrides":[{"name":"api","command":["node","--enable-source-maps","/app/dist/db-setup.mjs","--apply"]}]}'
+          network_configuration='awsvpcConfiguration={subnets=[subnet-089e5d9eafc956ee8,subnet-0ae45e0fef05c1ba0],securityGroups=[sg-0db8ec58c64cd5f02],assignPublicIp=DISABLED}'
+
+          run_task_json="$(aws ecs run-task \
+            --cluster "$cluster" \
+            --launch-type FARGATE \
+            --task-definition "$task_definition" \
+            --count 1 \
+            --network-configuration "$network_configuration" \
+            --overrides "$overrides" \
+            --output json)"
+
+          failures="$(jq -c '.failures' <<<"$run_task_json")"
+          if [[ "$failures" != "[]" ]]; then
+            echo "ECS rejected the one-off task:" >&2
+            jq '.failures' <<<"$run_task_json" >&2
+            exit 1
+          fi
+
+          task_count="$(jq '.tasks | length' <<<"$run_task_json")"
+          if [[ "$task_count" -ne 1 ]]; then
+            echo "Expected exactly one task but ECS returned $task_count." >&2
+            exit 1
+          fi
+
+          task_arn="$(jq -r '.tasks[0].taskArn' <<<"$run_task_json")"
+          echo "Task ARN: $task_arn"
+
+          set +e
+          aws ecs wait tasks-stopped \
+            --cluster "$cluster" \
+            --tasks "$task_arn"
+          wait_status=$?
+          set -e
+
+          stopped_task_json="$(aws ecs describe-tasks \
+            --cluster "$cluster" \
+            --tasks "$task_arn" \
+            --output json)"
+
+          last_status="$(jq -r '.tasks[0].lastStatus // "UNKNOWN"' <<<"$stopped_task_json")"
+          stop_reason="$(jq -r '.tasks[0].stoppedReason // "not reported"' <<<"$stopped_task_json")"
+          exit_code="$(jq -r \
+            --arg container "$container_name" \
+            '.tasks[0].containers[] | select(.name == $container) | .exitCode // empty' \
+            <<<"$stopped_task_json")"
+          container_reason="$(jq -r \
+            --arg container "$container_name" \
+            '.tasks[0].containers[] | select(.name == $container) | .reason // empty' \
+            <<<"$stopped_task_json")"
+
+          echo "Last status: $last_status"
+          echo "Stop reason: $stop_reason"
+          echo "Container exit code: ${exit_code:-not reported}"
+          if [[ -n "$container_reason" ]]; then
+            echo "Container reason: $container_reason"
+          fi
+
+          task_id="${task_arn##*/}"
+          log_stream_name="${log_stream_prefix}/${container_name}/${task_id}"
+
+          echo "Database schema apply summary:"
+          log_stream_found=false
+          for attempt in {1..12}; do
+            if aws logs describe-log-streams \
+              --region "$log_region" \
+              --log-group-name "$log_group" \
+              --log-stream-name-prefix "$log_stream_name" \
+              --query "logStreams[?logStreamName=='${log_stream_name}'].logStreamName | [0]" \
+              --output text | grep -Fxq "$log_stream_name"; then
+              log_stream_found=true
+              break
+            fi
+            sleep 5
+          done
+
+          if [[ "$log_stream_found" == "true" ]]; then
+            aws logs get-log-events \
+              --region "$log_region" \
+              --log-group-name "$log_group" \
+              --log-stream-name "$log_stream_name" \
+              --start-from-head \
+              --query 'events[].message' \
+              --output text
+          else
+            echo "Log stream was not available: $log_stream_name" >&2
+            exit 1
+          fi
+
+          if [[ "$wait_status" -ne 0 ]]; then
+            echo "Timed out or failed while waiting for the task to stop." >&2
+            exit "$wait_status"
+          fi
+          if [[ -z "$exit_code" ]]; then
+            echo "The api container did not report an exit code." >&2
+            exit 1
+          fi
+          if [[ "$exit_code" -ne 0 ]]; then
+            exit "$exit_code"
+          fi
