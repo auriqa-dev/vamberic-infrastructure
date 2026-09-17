@@ -29,8 +29,18 @@ export class SecurityStack extends cdk.Stack {
     this.loadBalancerSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
-      'Public HTTP ingress until an ACM certificate is introduced',
+      config.name === 'dev'
+        ? 'HTTP redirect to HTTPS'
+        : 'Public HTTP ingress until an ACM certificate is introduced',
     );
+
+    if (config.name === 'dev') {
+      this.loadBalancerSecurityGroup.addIngressRule(
+        ec2.Peer.anyIpv4(),
+        ec2.Port.tcp(443),
+        'Public HTTPS API ingress',
+      );
+    }
 
     this.serviceSecurityGroup = new ec2.SecurityGroup(this, 'ServiceSecurityGroup', {
       vpc: network.vpc,

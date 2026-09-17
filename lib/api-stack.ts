@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -6,6 +7,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environment';
 import { stackName } from '../config/environment';
+import { vappConfig } from '../config/vapp';
+import type { AuthStack } from './auth-stack';
 import type { NetworkStack } from './network-stack';
 import type { ObservabilityStack } from './observability-stack';
 import type { RegistryStack } from './registry-stack';
@@ -20,6 +23,8 @@ export class ApiStack extends cdk.Stack {
     observability: ObservabilityStack,
     registry: RegistryStack,
     imageTag: string,
+    auth?: AuthStack,
+    apiCertificate?: acm.ICertificate | string,
   ) {
     super(scope, stackName(config, 'Api'), {
       env: {
@@ -28,6 +33,23 @@ export class ApiStack extends cdk.Stack {
       },
       description: `Vamberic ${config.name} ECS API runtime`,
     });
+
+    if (
+      typeof apiCertificate === 'string' &&
+      !/^arn:aws:acm:eu-west-2:\d{12}:certificate\/.+$/.test(apiCertificate)
+    ) {
+      throw new Error('apiCertificateArn must be an ACM certificate ARN in eu-west-2.');
+    }
+    const certificate =
+      typeof apiCertificate === 'string'
+        ? acm.Certificate.fromCertificateArn(this, 'ExistingApiCertificate', apiCertificate)
+        : apiCertificate;
+    if (config.name === 'dev' && config.region !== 'eu-west-2') {
+      throw new Error('Vapp API HTTPS must be deployed in eu-west-2.');
+    }
+    if (config.name === 'dev' && (!auth || !certificate)) {
+      throw new Error('Dev API requires Vapp authentication and a regional TLS certificate.');
+    }
 
     const cluster = new ecs.Cluster(this, 'ApiCluster', {
       clusterName: `vamberic-${config.name}-api`,
@@ -85,6 +107,14 @@ export class ApiStack extends cdk.Stack {
       environment: {
         NODE_ENV: config.nodeEnvironment,
         DEPLOYMENT_ENV: config.deploymentEnvironment,
+        ...(auth
+          ? {
+              AWS_REGION: this.region,
+              COGNITO_USER_POOL_ID: auth.userPool.userPoolId,
+              COGNITO_CLIENT_ID: auth.client.userPoolClientId,
+              CORS_ORIGINS: vappConfig.corsOrigins.join(','),
+            }
+          : {}),
       },
       secrets: {
         MONGODB_URI: ecs.Secret.fromSecretsManager(security.apiRuntimeSecret, 'MONGODB_URI'),
@@ -126,8 +156,19 @@ export class ApiStack extends cdk.Stack {
     const listener = loadBalancer.addListener('HttpListener', {
       port: 80,
       open: false,
+      ...(certificate
+        ? {
+            defaultAction: elbv2.ListenerAction.redirect({
+              protocol: 'HTTPS',
+              port: '443',
+              permanent: true,
+            }),
+          }
+        : {}),
     });
-    listener.addTargets('ApiTargets', {
+    // Preserve the existing target group's construct path/logical ID.
+    const targetGroup = new elbv2.ApplicationTargetGroup(listener, 'ApiTargetsGroup', {
+      vpc: network.vpc,
       port: config.containerPort,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [service],
@@ -137,6 +178,20 @@ export class ApiStack extends cdk.Stack {
         interval: cdk.Duration.seconds(30),
       },
     });
+
+    if (certificate) {
+      loadBalancer.addListener('HttpsListener', {
+        port: 443,
+        open: false,
+        certificates: [certificate],
+        sslPolicy: elbv2.SslPolicy.RECOMMENDED_TLS,
+        defaultTargetGroups: [targetGroup],
+      });
+      new cdk.CfnOutput(this, 'ApiDomainName', { value: vappConfig.apiDomainName });
+      new cdk.CfnOutput(this, 'ApiBaseUrl', { value: `https://${vappConfig.apiDomainName}` });
+    } else {
+      listener.addTargetGroups('ForwardApi', { targetGroups: [targetGroup] });
+    }
 
     new cdk.CfnOutput(this, 'ApiLoadBalancerDnsName', {
       value: loadBalancer.loadBalancerDnsName,

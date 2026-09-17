@@ -20,7 +20,7 @@ The initial architecture is designed for separate `dev` and `prod` environments 
 
 Product applications and the Vamberic console will call the shared API. They must not connect directly to MongoDB Atlas.
 
-Route 53 records, new ACM certificates, MongoDB connectivity, queues, scheduled tasks, and agent infrastructure are intentionally out of scope. The website stack uses an existing CloudFront-compatible ACM certificate in `us-east-1`.
+Route 53 records, MongoDB connectivity, queues, scheduled tasks, and agent infrastructure remain out of scope. The website and separate Vapp stacks import an existing CloudFront-compatible ACM certificate in `us-east-1`; the dev API has a separate London certificate. See the [authenticated Vapp deployment guide](docs/authenticated-vapp.md) for certificate checks, external DNS validation, Cognito, outputs and GitHub OIDC integration.
 
 ## Environments
 
@@ -29,13 +29,15 @@ Environment configuration lives in `config/`:
 - `config/dev.ts` — one low-cost Fargate task, one NAT Gateway, and the currently approved immutable API image tag.
 - `config/prod.ts` — two initial Fargate tasks and two NAT Gateways for higher availability. Production intentionally has no default image tag.
 
-Each environment synthesizes five stacks:
+Both environments synthesize these five core stacks:
 
 - `VambericDevNetwork` / `VambericProdNetwork`
 - `VambericDevSecurity` / `VambericProdSecurity`
 - `VambericDevObservability` / `VambericProdObservability`
 - `VambericDevRegistry` / `VambericProdRegistry`
 - `VambericDevApi` / `VambericProdApi`
+
+Dev additionally synthesizes `VambericDevAuth`, `VambericDevApiCertificate` (unless importing an existing certificate), and `VambericDevVapp`. Vapp lives in the `@workspace/vapp` package of `auriqa-dev/vamberic-platform-api`; its asset deployment role trusts that repository’s `vapp` GitHub Environment. The existing `us-east-1` certificate covers `app.vamberic.com` and is reused without creating another app certificate. These stacks enable authenticated Vapp at `app.vamberic.com` and TLS for the existing API at `api.vamberic.com`. Follow the [Vapp deployment order](docs/authenticated-vapp.md#operator-controlled-deployment-order) before running the existing dev workflow.
 
 The CDK application also synthesizes `VambericProdWebsite`, a logically separate production stack for `www.vamberic.com`. It is not part of the dev API deployment workflow.
 
@@ -107,7 +109,7 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
    npm run cdk -- bootstrap aws://ACCOUNT_ID/eu-west-2
    ```
 
-2. Deploy the prerequisite stacks. This creates the network, security controls, logs, and empty ECR repository, but not the ECS service:
+2. Deploy the prerequisite stacks. This creates the network, security controls, logs, and empty ECR repository, but not the ECS service. For authenticated dev Vapp, also complete the certificate/auth stages in the linked Vapp guide before deploying the API:
 
    ```bash
    npm run cdk -- deploy \
@@ -199,6 +201,8 @@ The AWS account must already be bootstrapped for CDK. After checkout and determi
 - `VambericDevObservability`
 - `VambericDevRegistry`
 - `VambericDevApi`
+
+The current workflow must be updated as described in the [Vapp guide](docs/authenticated-vapp.md#github-actions-implications) before the first authenticated Vapp deployment, including certificate staging and explicit Vapp deployment.
 
 Deployment uses `--require-approval never` because GitHub Actions is non-interactive. The workflow does not deploy production.
 
