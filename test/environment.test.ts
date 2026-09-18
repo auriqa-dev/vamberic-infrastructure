@@ -11,7 +11,10 @@ describe('environment configuration', () => {
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
     expect(config.repositoryRetainedImageCount).toBe(20);
-    expect(resolveApiImageTag(config, undefined)).toBe('e08e110');
+    expect(resolveApiImageTag(config, undefined)).toBe('7a026d3');
+    expect(config.apiCertificateArn).toBe(
+      'arn:aws:acm:eu-west-2:755905325223:certificate/dba9f811-56bd-4168-8618-0523efa1a118',
+    );
     expect(config.apiRuntimeSecretName).toBe('vamberic/dev/api');
     expect(config.apiRuntimeSecretCompleteArn).toBe(
       'arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL',
@@ -28,6 +31,7 @@ describe('environment configuration', () => {
     expect(config.natGateways).toBeGreaterThan(1);
     expect(config.repositoryRetainedImageCount).toBe(50);
     expect(config.apiImageTag).toBeUndefined();
+    expect(config.apiCertificateArn).toBeUndefined();
     expect(config.apiRuntimeSecretName).toBeUndefined();
     expect(config.apiRuntimeSecretCompleteArn).toBeUndefined();
     expect(stackName(config, 'Api')).toBe('VambericProdApi');

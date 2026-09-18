@@ -9,7 +9,7 @@ The dev API reuses its VPC, NAT, ECS cluster, Fargate service, ALB, target group
 New stacks:
 
 - `VambericDevAuth`: retained, deletion-protected Cognito pool, public browser client, Cognito domain and managed-login branding.
-- `VambericDevApiCertificate`: DNS-validated ACM certificate for `api.vamberic.com` in `eu-west-2`. Separate from the API so external DNS validation can finish first. Omitted when `-c apiCertificateArn=...` supplies an existing regional certificate.
+- `VambericDevApiCertificate`: retained fallback implementation for environments without a supplied certificate. It is omitted from the current dev assembly because `config/dev.ts` supplies the issued London certificate. No new certificate or validation record is requested.
 - `VambericDevVapp`: separate retained private S3 bucket, CloudFront distribution and OAC. Imports the public website's existing `us-east-1` certificate. A tightly scoped GitHub deployment role trusts the `vapp` Environment in `auriqa-dev/vamberic-platform-api`, which contains the Vapp frontend workspace. No separate frontend repository is used.
 
 Dev API/security updates add port 443, TLS termination, port 80 permanent HTTPS redirect, and Cognito/CORS task environment variables. No second API service is created. These public app/API hostnames are assigned only to dev; production API configuration remains separate.
@@ -27,7 +27,7 @@ Dev API/security updates add port 443, TLS termination, port 80 permanent HTTPS 
 - Vapp must implement PKCE using S256, state and nonce verification. PKCE is requested by the browser; there is no CDK client setting that enforces it. See [Cognito authorization endpoint](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html).
 - `CognitoDomain` is the full `https://...auth.eu-west-2.amazoncognito.com` URL. `CognitoIssuer` is the distinct `https://cognito-idp.eu-west-2.amazonaws.com/POOL_ID` token issuer. The app's OAuth endpoints are on the managed-login domain; JWT discovery/JWKS use the issuer.
 
-ECS receives `AWS_REGION=eu-west-2`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and `CORS_ORIGINS=https://app.vamberic.com,http://localhost:5173`. The CORS value is a comma-separated list, never `*`. Confirm the API image parses that format, permits bearer authorization/preflight requests, validates signature/issuer/expiry, `token_use=access` and the access token's `client_id`, and protects intended routes while leaving health checks available. Infrastructure does not implement JWT validation. The existing immutable dev image tag remains unchanged; release an auth-capable API image through the existing release process if required. No custom API scope/authorization model is assumed.
+ECS receives `AWS_REGION=eu-west-2`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and `CORS_ORIGINS=https://app.vamberic.com,http://localhost:5173`. The CORS value is a comma-separated list, never `*`. Confirm the API image parses that format, permits bearer authorization/preflight requests, validates signature/issuer/expiry, `token_use=access` and the access token's `client_id`, and protects intended routes while leaving health checks available. Infrastructure does not implement JWT validation. The approved immutable dev API image tag is `7a026d3`, configured in `config/dev.ts`. No custom API scope/authorization model is assumed.
 
 ## Certificate and DNS preflight
 
@@ -47,7 +47,11 @@ aws acm describe-certificate --region us-east-1 \
 aws acm list-certificates --region eu-west-2 --certificate-statuses ISSUED PENDING_VALIDATION
 ```
 
-Describe candidate London certificates to confirm SAN coverage, account, status and suitability. If a suitable one exists, consistently pass `-c apiCertificateArn=EXISTING_LONDON_ARN` to synth/diff/deploy. Otherwise deploy the certificate stack first. Do not remove that context on later deployments or CDK will propose a new certificate. Confirm the imported CloudFront certificate and GitHub OIDC provider belong to the target account. Check existing CloudFront aliases before assigning `app.vamberic.com`.
+The issued London certificate is confirmed and persisted in `config/dev.ts`:
+
+`arn:aws:acm:eu-west-2:755905325223:certificate/dba9f811-56bd-4168-8618-0523efa1a118`
+
+The default deployment imports this certificate; no context override or new certificate stack is required. An explicit `-c apiCertificateArn=...` can override the configured ARN when deliberately changing certificates. Only if neither configuration nor context supplies an ARN does CDK synthesize the fallback certificate stack. Keep all existing certificates and DNS validation records. Omitting an already-deployed certificate stack from this CDK assembly does not delete it; do not run stack destruction or remove its retained certificate. Confirm the imported certificates and GitHub OIDC provider belong to the target account. Check existing CloudFront aliases before assigning `app.vamberic.com`.
 
 Public DNS inspection on 2026-09-17 returned `dns1.registrar-servers.com` and `dns2.registrar-servers.com`, consistent with Namecheap DNS. Queries returned no CNAME for `app` or `api`; this is not a full DNS zone inventory. No Route 53 hosted zone or records are created.
 
@@ -61,7 +65,7 @@ Required records at the current authoritative DNS provider:
 
 Use DNS hostnames only, without `https://` or paths. For Namecheap, enter the relative host portion when the UI appends `vamberic.com`. Inspect existing A/AAAA/CNAME/URL redirect records at those same names before changing them; leave apex and `www` records untouched. Retain ACM validation records for renewal. The Cognito-managed domain needs no customer DNS record.
 
-ACM validation tokens do not exist before AWS requests a certificate. During certificate-stack deployment, find the certificate ARN in CloudFormation Events or ACM, then inspect:
+The following validation procedure applies only to a future new certificate, not the currently imported issued certificate. ACM validation tokens do not exist before AWS requests a certificate. During certificate-stack deployment, find the certificate ARN in CloudFormation Events or ACM, then inspect:
 
 ```bash
 aws acm describe-certificate --region eu-west-2 --certificate-arn REQUESTED_ARN \
@@ -74,8 +78,8 @@ The certificate stack waits for external validation; its final output is unavail
 
 Run build, lint, tests and synth, then review AWS-aware CDK diffs. No deploy commands have been executed as part of this task.
 
-1. Confirm London certificate inventory and intended account/region as above. Reuse the confirmed existing app certificate.
-2. If creating a certificate, deploy **only** `VambericDevApiCertificate`, complete Namecheap DNS validation, and wait for `ISSUED`. If importing, skip this stack.
+1. Confirm the intended account/region. Use the issued London API certificate configured above and reuse the existing app certificate.
+2. Skip `VambericDevApiCertificate` for this deployment: the issued certificate is imported. Preserve any existing certificate stack/resources and all validation DNS records.
 3. Deploy `VambericDevAuth` and `VambericDevVapp` after reviewing their diff. The Vapp stack includes the deployment role for `auriqa-dev/vamberic-platform-api`; no repository context argument is needed. There is no asset deployment custom resource; the distribution serves no usable app until a build is uploaded.
 4. Deploy `VambericDevSecurity` and `VambericDevApi` with their dependencies and an approved auth-capable immutable image. CDK connects auth/certificate outputs to the task/listener automatically. This rolls the existing ECS service. Existing clients using the ALB's plain HTTP hostname must switch to `https://api.vamberic.com`; its AWS hostname is not covered by the certificate.
 5. Set the `api` CNAME, deploy the Vapp build, then set the `app` CNAME. Create the first human user through the administrator-controlled Cognito process. Check login, logout, deep links, invalid/expired JWT rejection, preflight, health checks and MongoDB connectivity.
@@ -99,9 +103,9 @@ The repository's `deploy-dev.yml`, database setup workflows and execution-role d
 
 Before running the existing infrastructure deployment workflow:
 
-- Complete the certificate preflight/validation stage separately; an unattended first deployment can wait indefinitely on external DNS validation.
+- The current dev configuration imports an issued certificate, so no certificate validation stage is required. Do not add `VambericDevApiCertificate` to the deployment list.
 - Add `VambericDevAuth` and `VambericDevVapp` to its explicit deployment list. Auth/certificate are also inferred dependencies of API. Keep `VambericProdWebsite` excluded and retain the manual trigger.
-- When importing a London certificate, persist the same `apiCertificateArn` context in both synth and deploy commands (or reviewed `cdk.json` context). The repository and GitHub Environment are fixed in `config/vapp.ts`; no repository override is accepted by the stack.
+- The London certificate ARN is persisted in `config/dev.ts`; synth and deploy need no certificate context argument. If deliberately overriding it, use the same override in both commands. The repository and GitHub Environment are fixed in `config/vapp.ts`; no repository override is accepted by the stack.
 - Confirm its OIDC/CDK deployment identity can provision Cognito, ACM, S3, CloudFront and the scoped IAM role. Do not add access keys.
 - The API image does not need Cognito build-time variables. CDK places them on the task definition. An image release workflow must preserve this task environment and secret injection; it must not overwrite them with a reduced task definition. An infrastructure deployment rolls tasks to pick up changes. Existing one-off database task workflows reuse the same task definition.
 
@@ -178,4 +182,4 @@ The role imports the account's existing GitHub OIDC provider and trusts only `re
 
 ## Decisions before deployment
 
-The repository and CloudFront certificate reuse are confirmed. Remaining prerequisites are London API certificate selection/validation, the existing GitHub OIDC provider, protected `vapp` Environment setup in `auriqa-dev/vamberic-platform-api`, and release image/application readiness. `localhost:5173/`, comma-separated CORS and a full-URL Cognito domain are the explicit integration defaults. Dev will own `app.vamberic.com` and `api.vamberic.com` initially; plan any later production cutover separately. No extra human approval is needed to review or synthesize these changes.
+The repository and CloudFront certificate reuse are confirmed. The London certificate and API image `7a026d3` are also confirmed. Remaining prerequisites are the existing GitHub OIDC provider, protected `vapp` Environment setup in `auriqa-dev/vamberic-platform-api`, and release image/application readiness. `localhost:5173/`, comma-separated CORS and a full-URL Cognito domain are the explicit integration defaults. Dev will own `app.vamberic.com` and `api.vamberic.com` initially; plan any later production cutover separately. No extra human approval is needed to review or synthesize these changes.

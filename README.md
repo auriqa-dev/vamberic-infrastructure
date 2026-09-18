@@ -37,7 +37,7 @@ Both environments synthesize these five core stacks:
 - `VambericDevRegistry` / `VambericProdRegistry`
 - `VambericDevApi` / `VambericProdApi`
 
-Dev additionally synthesizes `VambericDevAuth`, `VambericDevApiCertificate` (unless importing an existing certificate), and `VambericDevVapp`. Vapp lives in the `@workspace/vapp` package of `auriqa-dev/vamberic-platform-api`; its asset deployment role trusts that repository’s `vapp` GitHub Environment. The existing `us-east-1` certificate covers `app.vamberic.com` and is reused without creating another app certificate. These stacks enable authenticated Vapp at `app.vamberic.com` and TLS for the existing API at `api.vamberic.com`. Follow the [Vapp deployment order](docs/authenticated-vapp.md#operator-controlled-deployment-order) before running the existing dev workflow.
+Dev additionally synthesizes `VambericDevAuth` and `VambericDevVapp`. The issued London API certificate is configured in `config/dev.ts` and imported by default, so `VambericDevApiCertificate` is not synthesized. Vapp lives in the `@workspace/vapp` package of `auriqa-dev/vamberic-platform-api`; its asset deployment role trusts that repository’s `vapp` GitHub Environment. The existing `us-east-1` certificate covers `app.vamberic.com` and is reused without creating another app certificate. These stacks enable authenticated Vapp at `app.vamberic.com` and TLS for the existing API at `api.vamberic.com`. Follow the [Vapp deployment order](docs/authenticated-vapp.md#operator-controlled-deployment-order) before running the existing dev workflow.
 
 The CDK application also synthesizes `VambericProdWebsite`, a logically separate production stack for `www.vamberic.com`. It is not part of the dev API deployment workflow.
 
@@ -119,7 +119,7 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `e08e110`. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `7a026d3`. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 

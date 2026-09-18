@@ -13,7 +13,7 @@ import { RegistryStack } from '../lib/registry-stack';
 import { SecurityStack } from '../lib/security-stack';
 import { WebsiteStack } from '../lib/website-stack';
 
-function createStacks(existingCertificateArn?: string) {
+function createStacks(existingCertificateArn?: string, imageTag = 'test-abcdef0') {
   const app = new cdk.App();
   const config = getEnvironmentConfig('dev');
   const network = new NetworkStack(app, config);
@@ -29,7 +29,7 @@ function createStacks(existingCertificateArn?: string) {
     security,
     observability,
     registry,
-    'test-abcdef0',
+    imageTag,
     auth,
     existingCertificateArn ?? certificate?.certificate,
   );
@@ -347,6 +347,34 @@ describe('Vamberic infrastructure assumptions', () => {
 });
 
 describe('authenticated Vapp', () => {
+  test('configured dev release imports the issued certificate and pins the approved image', () => {
+    const config = getEnvironmentConfig('dev');
+    const stacks = createStacks(config.apiCertificateArn, config.apiImageTag);
+    const template = Template.fromStack(stacks.api);
+    expect(stacks.certificate).toBeUndefined();
+    template.resourceCountIs('AWS::CertificateManager::Certificate', 0);
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::Listener', {
+      Port: 443,
+      Certificates: [
+        {
+          CertificateArn:
+            'arn:aws:acm:eu-west-2:755905325223:certificate/dba9f811-56bd-4168-8618-0523efa1a118',
+        },
+      ],
+    });
+    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: Match.arrayWith([
+        Match.objectLike({
+          Image: { 'Fn::Join': ['', Match.arrayWith([':7a026d3'])] },
+        }),
+      ]),
+    });
+    expect(stacks.api.dependencies).toContain(stacks.auth);
+    expect(stacks.api.dependencies.map((stack) => stack.stackName)).not.toContain(
+      'VambericDevApiCertificate',
+    );
+  });
+
   test('admin-only email users with optional TOTP and a public code-flow client', () => {
     const template = Template.fromStack(createStacks().auth);
     template.hasResourceProperties('AWS::Cognito::UserPool', {

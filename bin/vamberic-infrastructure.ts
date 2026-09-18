@@ -34,6 +34,7 @@ const auth = config.name === 'dev' ? new AuthStack(app, config) : undefined;
 const apiCertificate =
   config.name === 'dev'
     ? ((app.node.tryGetContext('apiCertificateArn') as string | undefined) ??
+      config.apiCertificateArn ??
       new ApiCertificateStack(app, config).certificate)
     : undefined;
 if (config.name === 'dev') new VappStack(app, config);

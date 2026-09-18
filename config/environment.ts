@@ -19,6 +19,7 @@ export interface EnvironmentConfig {
   readonly healthCheckPath: string;
   readonly repositoryRetainedImageCount: number;
   readonly apiImageTag?: string;
+  readonly apiCertificateArn?: string;
   readonly apiRuntimeSecretName?: string;
   readonly apiRuntimeSecretCompleteArn?: string;
 }
