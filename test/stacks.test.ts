@@ -570,10 +570,24 @@ describe('authenticated Vapp', () => {
     expect(actual.Outputs).toEqual(productionWebsiteBaseline.Outputs);
   });
 
-  test('asset deployment role trusts only the platform repository vapp environment', () => {
+  test('asset deployment role trusts only the immutable platform repository vapp subject', () => {
     const stack = new VappStack(new cdk.App(), getEnvironmentConfig('dev'));
     const template = Template.fromStack(stack);
     template.resourceCountIs('AWS::IAM::OIDCProvider', 0);
+    template.resourceCountIs('AWS::IAM::Role', 1);
+    const role = Object.values(template.findResources('AWS::IAM::Role'))[0];
+    const statements = role.Properties.AssumeRolePolicyDocument.Statement;
+    expect(statements).toHaveLength(1);
+    expect(statements[0].Condition).toEqual({
+      StringEquals: {
+        'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+        'token.actions.githubusercontent.com:sub':
+          'repo:auriqa-dev@209590030/vamberic-platform-api@1362482756:environment:vapp',
+      },
+    });
+    expect(JSON.stringify(statements[0].Principal.Federated)).toContain(
+      ':oidc-provider/token.actions.githubusercontent.com',
+    );
     template.hasResourceProperties('AWS::IAM::Role', {
       AssumeRolePolicyDocument: {
         Statement: Match.arrayWith([
@@ -583,7 +597,7 @@ describe('authenticated Vapp', () => {
               StringEquals: {
                 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
                 'token.actions.githubusercontent.com:sub':
-                  'repo:auriqa-dev/vamberic-platform-api:environment:vapp',
+                  'repo:auriqa-dev@209590030/vamberic-platform-api@1362482756:environment:vapp',
               },
             },
           }),

@@ -178,7 +178,7 @@ jobs:
 
 Only use long immutable caching for fingerprinted assets; adjust the example if the build emits other mutable files. Old hashed assets are retained so already-open browser sessions keep working; use a separate deliberate cleanup policy later. CloudFront's minimum default-cache TTL can cache `index.html` briefly; invalidation refreshes it after each release.
 
-The role imports the account's existing GitHub OIDC provider and trusts only `repo:auriqa-dev/vamberic-platform-api:environment:vapp` with audience `sts.amazonaws.com`. Permissions are limited to this Vapp bucket's list/write/delete and this distribution's invalidation. It cannot deploy the public website, change infrastructure or read runtime secrets. Confirm the provider already exists before deploying the stack. The role is separate from the API image deployment role but trusts the same repository, scoped to its protected `vapp` Environment.
+The role uses GitHub's immutable subject format, including owner ID `209590030` and repository ID `1362482756`. It imports the account's existing GitHub OIDC provider and trusts only `repo:auriqa-dev@209590030/vamberic-platform-api@1362482756:environment:vapp` with audience `sts.amazonaws.com`. Permissions are limited to this Vapp bucket's list/write/delete and this distribution's invalidation. It cannot deploy the public website, change infrastructure or read runtime secrets. Confirm the provider already exists before deploying the stack. The role is separate from the API image deployment role but trusts the same repository, scoped to its protected `vapp` Environment.
 
 ## Decisions before deployment
 

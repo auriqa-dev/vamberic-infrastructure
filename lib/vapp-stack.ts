@@ -67,7 +67,7 @@ export class VappStack extends cdk.Stack {
       assumedBy: new iam.OpenIdConnectPrincipal(provider, {
         StringEquals: {
           'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-          'token.actions.githubusercontent.com:sub': `repo:${vappConfig.deploymentRepository}:environment:${vappConfig.deploymentEnvironment}`,
+          'token.actions.githubusercontent.com:sub': `repo:${vappConfig.deploymentOidcRepository}:environment:${vappConfig.deploymentEnvironment}`,
         },
       }),
       maxSessionDuration: cdk.Duration.hours(1),
