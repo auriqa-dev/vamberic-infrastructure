@@ -107,6 +107,9 @@ export class ApiStack extends cdk.Stack {
       environment: {
         NODE_ENV: config.nodeEnvironment,
         DEPLOYMENT_ENV: config.deploymentEnvironment,
+        ...(config.publicEnquiryCorsOrigins
+          ? { PUBLIC_ENQUIRY_CORS_ORIGINS: config.publicEnquiryCorsOrigins.join(',') }
+          : {}),
         ...(auth
           ? {
               AWS_REGION: this.region,

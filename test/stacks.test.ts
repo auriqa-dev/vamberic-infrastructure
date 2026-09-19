@@ -365,7 +365,7 @@ describe('authenticated Vapp', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Image: { 'Fn::Join': ['', Match.arrayWith([':49788dd'])] },
+          Image: { 'Fn::Join': ['', Match.arrayWith([':5116deb'])] },
         }),
       ]),
     });
@@ -464,6 +464,7 @@ describe('authenticated Vapp', () => {
         { Name: 'COGNITO_USER_POOL_ID', Value: expect.any(Object) },
         { Name: 'COGNITO_CLIENT_ID', Value: expect.any(Object) },
         { Name: 'CORS_ORIGINS', Value: 'https://app.vamberic.com,http://localhost:5173' },
+        { Name: 'PUBLIC_ENQUIRY_CORS_ORIGINS', Value: 'https://h-v-m.agency' },
       ]),
     );
     expect(
