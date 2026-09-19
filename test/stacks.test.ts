@@ -365,7 +365,7 @@ describe('authenticated Vapp', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Image: { 'Fn::Join': ['', Match.arrayWith([':7a026d3'])] },
+          Image: { 'Fn::Join': ['', Match.arrayWith([':49788dd'])] },
         }),
       ]),
     });
