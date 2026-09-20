@@ -233,3 +233,7 @@ Synthesis and tests have no AWS cost. A future deployment may incur ongoing cost
 - CloudFront data transfer, requests, and invalidations beyond the free allowance.
 
 The dev configuration deliberately starts with one Fargate task and one NAT Gateway, but the NAT Gateway and ALB still incur charges while deployed.
+
+## HVM production website
+
+Dedicated HVM stacks host `h-v-m.agency` independently of Vamberic and Vapp: `VambericProdHvmCertificate` (`us-east-1`) and `VambericProdHvmWebsite` (`eu-west-2`). See the [HVM hosting and DNS handoff](docs/hvm-website.md) for staged certificate validation, the required certificate ARN parameter, GitHub `hvm-prod` OIDC setup, outputs and Namecheap records. These stacks are not part of the existing dev API deployment workflow.

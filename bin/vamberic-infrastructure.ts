@@ -11,6 +11,8 @@ import { ObservabilityStack } from '../lib/observability-stack';
 import { RegistryStack } from '../lib/registry-stack';
 import { SecurityStack } from '../lib/security-stack';
 import { WebsiteStack } from '../lib/website-stack';
+import { HvmCertificateStack } from '../lib/hvm-certificate-stack';
+import { HvmWebsiteStack } from '../lib/hvm-website-stack';
 
 const app = new cdk.App();
 const environmentName = process.env.DEPLOY_ENV ?? app.node.tryGetContext('environment');
@@ -53,6 +55,9 @@ new WebsiteStack(app, {
   ...websiteConfig,
   account: process.env.CDK_DEFAULT_ACCOUNT,
 });
+
+new HvmCertificateStack(app, process.env.CDK_DEFAULT_ACCOUNT);
+new HvmWebsiteStack(app, process.env.CDK_DEFAULT_ACCOUNT);
 
 security.addStackDependency(network);
 api.addStackDependency(network);
