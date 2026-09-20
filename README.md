@@ -55,7 +55,7 @@ or:
 npm run cdk -- synth -c environment=prod
 ```
 
-Stack deployment accounts come from the ambient `CDK_DEFAULT_ACCOUNT` when one is available. Existing-resource configuration contains the supplied complete ARNs for the ACM certificate and dev API runtime secret; those identifiers necessarily include their owning AWS account IDs. The region defaults to `eu-west-2` and can be overridden with `CDK_DEFAULT_REGION`.
+All stacks target account `755905325223`, configured in `config/deployment.ts`. Application/infrastructure stacks, Vapp, the Vamberic website and HVM hosting use their configured `eu-west-2` region; the dedicated HVM certificate stack uses `us-east-1`. The Vamberic website/Vapp continue to import their existing `us-east-1` certificate, while API TLS remains in `eu-west-2`. Ambient `CDK_DEFAULT_ACCOUNT`, `CDK_DEFAULT_REGION` and AWS region variables do not override these destinations. Select credentials with the appropriate profile; changing the shell region does not retarget stacks.
 
 ## Production website
 

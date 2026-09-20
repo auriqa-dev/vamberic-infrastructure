@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { getEnvironmentConfig, resolveApiImageTag } from '../config/environment';
 import { websiteConfig } from '../config/website';
+import { deploymentAccount } from '../config/deployment';
 import { AuthStack } from '../lib/auth-stack';
 import { ApiCertificateStack } from '../lib/api-certificate-stack';
 import { VappStack } from '../lib/vapp-stack';
@@ -19,8 +20,8 @@ const environmentName = process.env.DEPLOY_ENV ?? app.node.tryGetContext('enviro
 const baseConfig = getEnvironmentConfig(environmentName);
 const config = {
   ...baseConfig,
-  account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION ?? baseConfig.region,
+  account: deploymentAccount,
+  region: baseConfig.region,
 };
 const imageTag = resolveApiImageTag(
   config,
@@ -53,11 +54,11 @@ const api = new ApiStack(
 );
 new WebsiteStack(app, {
   ...websiteConfig,
-  account: process.env.CDK_DEFAULT_ACCOUNT,
+  account: deploymentAccount,
 });
 
-new HvmCertificateStack(app, process.env.CDK_DEFAULT_ACCOUNT);
-new HvmWebsiteStack(app, process.env.CDK_DEFAULT_ACCOUNT);
+new HvmCertificateStack(app, deploymentAccount);
+new HvmWebsiteStack(app, deploymentAccount);
 
 security.addStackDependency(network);
 api.addStackDependency(network);
