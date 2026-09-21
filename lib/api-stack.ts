@@ -85,14 +85,6 @@ export class ApiStack extends cdk.Stack {
               arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
             }),
           ),
-          conditions: {
-            StringEquals: { 'ses:FromAddress': notifications.from },
-            'ForAllValues:StringEquals': {
-              'ses:Recipients': [
-                ...new Set(Object.values(notifications.recipientsByProduct).flat()),
-              ],
-            },
-          },
         }),
       );
     }

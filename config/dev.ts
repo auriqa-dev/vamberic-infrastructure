@@ -14,12 +14,11 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
-  apiImageTag: '582d26d',
+  apiImageTag: 'a830200',
   publicEnquiryCorsOrigins: ['https://h-v-m.agency'],
   enquiryEmailNotifications: {
     from: 'notifications@vamberic.com',
-    // Support verification of either the domain or the individual sending address.
-    senderIdentities: ['vamberic.com', 'notifications@vamberic.com'],
+    senderIdentities: ['vamberic.com'],
     recipientsByProduct: {
       product_01m2wffbf3p9p19d3nd1s2fp3x: ['notifications@vamberic.com'],
     },

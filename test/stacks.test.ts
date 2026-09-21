@@ -365,7 +365,7 @@ describe('authenticated Vapp', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Image: { 'Fn::Join': ['', Match.arrayWith([':582d26d'])] },
+          Image: { 'Fn::Join': ['', Match.arrayWith([':a830200'])] },
         }),
       ]),
     });
@@ -650,7 +650,7 @@ describe('dev enquiry email notifications', () => {
     expect(statements[0]).toEqual({
       Effect: 'Allow',
       Action: 'ses:SendEmail',
-      Resource: ['vamberic.com', 'notifications@vamberic.com'].map((identity) => ({
+      Resource: {
         'Fn::Join': [
           '',
           [
@@ -658,15 +658,14 @@ describe('dev enquiry email notifications', () => {
             { Ref: 'AWS::Partition' },
             ':ses:eu-west-2:',
             { Ref: 'AWS::AccountId' },
-            ':identity/' + identity,
+            ':identity/vamberic.com',
           ],
         ],
-      })),
-      Condition: {
-        StringEquals: { 'ses:FromAddress': 'notifications@vamberic.com' },
-        'ForAllValues:StringEquals': { 'ses:Recipients': ['notifications@vamberic.com'] },
       },
     });
+    expect(statements[0]).not.toHaveProperty('Condition');
+    expect(JSON.stringify(statements)).not.toContain('ses:SendRawEmail');
+    expect(JSON.stringify(statements)).not.toContain('*');
   });
 
   test('production does not enable enquiry email notifications', () => {

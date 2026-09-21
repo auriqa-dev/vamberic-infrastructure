@@ -119,7 +119,7 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `582d26d`. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `a830200`. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 
