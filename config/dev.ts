@@ -18,7 +18,7 @@ export const devConfig: EnvironmentConfig = {
   publicEnquiryCorsOrigins: ['https://h-v-m.agency'],
   enquiryEmailNotifications: {
     from: 'notifications@vamberic.com',
-    senderIdentities: ['vamberic.com'],
+    senderIdentities: ['vamberic.com', 'notifications@vamberic.com'],
     recipientsByProduct: {
       product_01m2wffbf3p9p19d3nd1s2fp3x: ['notifications@vamberic.com'],
     },

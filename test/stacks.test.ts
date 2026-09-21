@@ -650,7 +650,7 @@ describe('dev enquiry email notifications', () => {
     expect(statements[0]).toEqual({
       Effect: 'Allow',
       Action: 'ses:SendEmail',
-      Resource: {
+      Resource: ['vamberic.com', 'notifications@vamberic.com'].map((identity) => ({
         'Fn::Join': [
           '',
           [
@@ -658,10 +658,10 @@ describe('dev enquiry email notifications', () => {
             { Ref: 'AWS::Partition' },
             ':ses:eu-west-2:',
             { Ref: 'AWS::AccountId' },
-            ':identity/vamberic.com',
+            ':identity/' + identity,
           ],
         ],
-      },
+      })),
     });
     expect(statements[0]).not.toHaveProperty('Condition');
     expect(JSON.stringify(statements)).not.toContain('ses:SendRawEmail');
