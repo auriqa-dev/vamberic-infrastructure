@@ -365,7 +365,7 @@ describe('authenticated Vapp', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Image: { 'Fn::Join': ['', Match.arrayWith([':5116deb'])] },
+          Image: { 'Fn::Join': ['', Match.arrayWith([':428bafd'])] },
         }),
       ]),
     });
@@ -612,5 +612,64 @@ describe('authenticated Vapp', () => {
       }
     }
     template.hasOutput('VappDeploymentRoleArn', {});
+  });
+});
+
+describe('dev enquiry email notifications', () => {
+  test('enables HVM mail and grants only scoped SendEmail on the application task role', () => {
+    const template = Template.fromStack(createStacks().api);
+    const task = Object.values(template.findResources('AWS::ECS::TaskDefinition'))[0];
+    const env = Object.fromEntries(
+      task.Properties.ContainerDefinitions[0].Environment.map(
+        (entry: { Name: string; Value: unknown }) => [entry.Name, entry.Value],
+      ),
+    );
+    expect(env.NOTIFICATION_EMAIL_ENABLED).toBe('true');
+    expect(env.NOTIFICATION_EMAIL_FROM).toBe('notifications@vamberic.com');
+    expect(JSON.parse(env.PRODUCT_ENQUIRY_NOTIFICATION_RECIPIENTS_JSON as string)).toEqual({
+      product_01m2wffbf3p9p19d3nd1s2fp3x: ['notifications@vamberic.com'],
+    });
+    const roles = template.findResources('AWS::IAM::Role');
+    const applicationRole = Object.keys(roles).find(
+      (id) => roles[id].Properties.RoleName === 'vamberic-dev-api-task',
+    )!;
+    const executionRole = Object.keys(roles).find(
+      (id) => roles[id].Properties.RoleName === 'vamberic-dev-api-execution',
+    )!;
+    expect(task.Properties.TaskRoleArn).toEqual({ 'Fn::GetAtt': [applicationRole, 'Arn'] });
+    expect(task.Properties.ExecutionRoleArn).toEqual({ 'Fn::GetAtt': [executionRole, 'Arn'] });
+    expect(roles[applicationRole].Properties.ManagedPolicyArns).toBeUndefined();
+    const sesPolicies = Object.values(template.findResources('AWS::IAM::Policy')).filter((policy) =>
+      JSON.stringify(policy.Properties.PolicyDocument).includes('ses:'),
+    );
+    expect(sesPolicies).toHaveLength(1);
+    expect(sesPolicies[0].Properties.Roles).toEqual([{ Ref: applicationRole }]);
+    expect(sesPolicies[0].Properties.Roles).not.toContainEqual({ Ref: executionRole });
+    const statements = sesPolicies[0].Properties.PolicyDocument.Statement;
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).toEqual({
+      Effect: 'Allow',
+      Action: 'ses:SendEmail',
+      Resource: ['vamberic.com', 'notifications@vamberic.com'].map((identity) => ({
+        'Fn::Join': [
+          '',
+          [
+            'arn:',
+            { Ref: 'AWS::Partition' },
+            ':ses:eu-west-2:',
+            { Ref: 'AWS::AccountId' },
+            ':identity/' + identity,
+          ],
+        ],
+      })),
+      Condition: {
+        StringEquals: { 'ses:FromAddress': 'notifications@vamberic.com' },
+        'ForAllValues:StringEquals': { 'ses:Recipients': ['notifications@vamberic.com'] },
+      },
+    });
+  });
+
+  test('production does not enable enquiry email notifications', () => {
+    expect(getEnvironmentConfig('prod').enquiryEmailNotifications).toBeUndefined();
   });
 });

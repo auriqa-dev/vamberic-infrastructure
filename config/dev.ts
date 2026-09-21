@@ -14,8 +14,16 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
-  apiImageTag: '5116deb',
+  apiImageTag: '428bafd',
   publicEnquiryCorsOrigins: ['https://h-v-m.agency'],
+  enquiryEmailNotifications: {
+    from: 'notifications@vamberic.com',
+    // Support verification of either the domain or the individual sending address.
+    senderIdentities: ['vamberic.com', 'notifications@vamberic.com'],
+    recipientsByProduct: {
+      product_01m2wffbf3p9p19d3nd1s2fp3x: ['notifications@vamberic.com'],
+    },
+  },
   apiCertificateArn:
     'arn:aws:acm:eu-west-2:755905325223:certificate/dba9f811-56bd-4168-8618-0523efa1a118',
   apiRuntimeSecretName: 'vamberic/dev/api',

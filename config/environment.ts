@@ -19,6 +19,11 @@ export interface EnvironmentConfig {
   readonly healthCheckPath: string;
   readonly repositoryRetainedImageCount: number;
   readonly apiImageTag?: string;
+  readonly enquiryEmailNotifications?: {
+    readonly from: string;
+    readonly senderIdentities: readonly string[];
+    readonly recipientsByProduct: Readonly<Record<string, readonly string[]>>;
+  };
   readonly publicEnquiryCorsOrigins?: readonly string[];
   readonly apiCertificateArn?: string;
   readonly apiRuntimeSecretName?: string;

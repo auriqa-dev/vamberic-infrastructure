@@ -72,6 +72,31 @@ export class ApiStack extends cdk.Stack {
       description: 'Application permissions start empty and are granted per feature',
     });
 
+    const notifications = config.enquiryEmailNotifications;
+    if (notifications) {
+      taskRole.addToPolicy(
+        new iam.PolicyStatement({
+          actions: ['ses:SendEmail'],
+          resources: notifications.senderIdentities.map((identity) =>
+            this.formatArn({
+              service: 'ses',
+              resource: 'identity',
+              resourceName: identity,
+              arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
+            }),
+          ),
+          conditions: {
+            StringEquals: { 'ses:FromAddress': notifications.from },
+            'ForAllValues:StringEquals': {
+              'ses:Recipients': [
+                ...new Set(Object.values(notifications.recipientsByProduct).flat()),
+              ],
+            },
+          },
+        }),
+      );
+    }
+
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'ApiTaskDefinition', {
       family: `vamberic-${config.name}-api`,
       cpu: config.cpu,
@@ -107,6 +132,15 @@ export class ApiStack extends cdk.Stack {
       environment: {
         NODE_ENV: config.nodeEnvironment,
         DEPLOYMENT_ENV: config.deploymentEnvironment,
+        ...(notifications
+          ? {
+              NOTIFICATION_EMAIL_ENABLED: 'true',
+              NOTIFICATION_EMAIL_FROM: notifications.from,
+              PRODUCT_ENQUIRY_NOTIFICATION_RECIPIENTS_JSON: JSON.stringify(
+                notifications.recipientsByProduct,
+              ),
+            }
+          : {}),
         ...(config.publicEnquiryCorsOrigins
           ? { PUBLIC_ENQUIRY_CORS_ORIGINS: config.publicEnquiryCorsOrigins.join(',') }
           : {}),
