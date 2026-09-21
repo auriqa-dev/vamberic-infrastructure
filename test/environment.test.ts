@@ -11,7 +11,7 @@ describe('environment configuration', () => {
     expect(config.desiredCount).toBe(1);
     expect(config.natGateways).toBe(1);
     expect(config.repositoryRetainedImageCount).toBe(20);
-    expect(resolveApiImageTag(config, undefined)).toBe('d5bfe09');
+    expect(resolveApiImageTag(config, undefined)).toBe('5f15a3e');
     expect(config.apiCertificateArn).toBe(
       'arn:aws:acm:eu-west-2:755905325223:certificate/dba9f811-56bd-4168-8618-0523efa1a118',
     );
