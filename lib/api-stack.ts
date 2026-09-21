@@ -77,14 +77,9 @@ export class ApiStack extends cdk.Stack {
       taskRole.addToPolicy(
         new iam.PolicyStatement({
           actions: ['ses:SendEmail'],
-          resources: notifications.senderIdentities.map((identity) =>
-            this.formatArn({
-              service: 'ses',
-              resource: 'identity',
-              resourceName: identity,
-              arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
-            }),
-          ),
+          // TEMPORARY DIAGNOSTIC: isolate SES resource-level authorization failures.
+          // Restore identity ARN scoping from notifications.senderIdentities after diagnosis.
+          resources: ['*'],
         }),
       );
     }

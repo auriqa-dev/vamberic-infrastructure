@@ -365,7 +365,7 @@ describe('authenticated Vapp', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Image: { 'Fn::Join': ['', Match.arrayWith([':a830200'])] },
+          Image: { 'Fn::Join': ['', Match.arrayWith([':d5bfe09'])] },
         }),
       ]),
     });
@@ -616,7 +616,7 @@ describe('authenticated Vapp', () => {
 });
 
 describe('dev enquiry email notifications', () => {
-  test('enables HVM mail and grants only scoped SendEmail on the application task role', () => {
+  test('enables HVM mail and grants only diagnostic SendEmail on the application task role', () => {
     const template = Template.fromStack(createStacks().api);
     const task = Object.values(template.findResources('AWS::ECS::TaskDefinition'))[0];
     const env = Object.fromEntries(
@@ -650,22 +650,24 @@ describe('dev enquiry email notifications', () => {
     expect(statements[0]).toEqual({
       Effect: 'Allow',
       Action: 'ses:SendEmail',
-      Resource: ['vamberic.com', 'notifications@vamberic.com'].map((identity) => ({
+      Resource: '*',
+    });
+    expect(statements[0]).not.toHaveProperty('Condition');
+    expect(JSON.stringify(statements)).not.toContain('ses:SendRawEmail');
+    expect(JSON.stringify(statements)).not.toContain('ses:*');
+    expect(roles[executionRole].Properties.Policies).toBeUndefined();
+    expect(roles[executionRole].Properties.ManagedPolicyArns).toEqual([
+      {
         'Fn::Join': [
           '',
           [
             'arn:',
             { Ref: 'AWS::Partition' },
-            ':ses:eu-west-2:',
-            { Ref: 'AWS::AccountId' },
-            ':identity/' + identity,
+            ':iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy',
           ],
         ],
-      })),
-    });
-    expect(statements[0]).not.toHaveProperty('Condition');
-    expect(JSON.stringify(statements)).not.toContain('ses:SendRawEmail');
-    expect(JSON.stringify(statements)).not.toContain('*');
+      },
+    ]);
   });
 
   test('production does not enable enquiry email notifications', () => {
