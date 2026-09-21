@@ -14,7 +14,7 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
-  apiImageTag: '428bafd',
+  apiImageTag: '582d26d',
   publicEnquiryCorsOrigins: ['https://h-v-m.agency'],
   enquiryEmailNotifications: {
     from: 'notifications@vamberic.com',
