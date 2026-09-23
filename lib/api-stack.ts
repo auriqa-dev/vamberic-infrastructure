@@ -22,7 +22,7 @@ export class ApiStack extends cdk.Stack {
     security: SecurityStack,
     observability: ObservabilityStack,
     registry: RegistryStack,
-    imageTag: string,
+    imageTag: string | undefined,
     auth?: AuthStack,
     apiCertificate?: acm.ICertificate | string,
   ) {
@@ -50,6 +50,19 @@ export class ApiStack extends cdk.Stack {
     if (config.name === 'dev' && (!auth || !certificate)) {
       throw new Error('Dev API requires Vapp authentication and a regional TLS certificate.');
     }
+
+    const deployedImageTag =
+      config.name === 'dev'
+        ? new cdk.CfnParameter(this, 'ApiImageTag', {
+            type: 'String',
+            allowedPattern: '[a-f0-9]{7,40}',
+            description:
+              'Immutable application image tag; retained across infrastructure deployments',
+            constraintDescription:
+              'Use an immutable hexadecimal commit tag (7–40 characters), never latest.',
+          }).valueAsString
+        : imageTag;
+    if (!deployedImageTag) throw new Error('Production API requires an explicit image tag.');
 
     const cluster = new ecs.Cluster(this, 'ApiCluster', {
       clusterName: `vamberic-${config.name}-api`,
@@ -109,7 +122,7 @@ export class ApiStack extends cdk.Stack {
     cfnTaskDefinition.node.addDependency(taskExecutionPolicy);
 
     taskDefinition.addContainer('ApiContainer', {
-      image: ecs.ContainerImage.fromEcrRepository(registry.apiRepository, imageTag),
+      image: ecs.ContainerImage.fromEcrRepository(registry.apiRepository, deployedImageTag),
       containerName: 'api',
       logging: ecs.LogDrivers.awsLogs({
         logGroup: observability.apiLogGroup,

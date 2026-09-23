@@ -27,7 +27,7 @@ Dev API/security updates add port 443, TLS termination, port 80 permanent HTTPS 
 - Vapp must implement PKCE using S256, state and nonce verification. PKCE is requested by the browser; there is no CDK client setting that enforces it. See [Cognito authorization endpoint](https://docs.aws.amazon.com/cognito/latest/developerguide/authorization-endpoint.html).
 - `CognitoDomain` is the full `https://...auth.eu-west-2.amazoncognito.com` URL. `CognitoIssuer` is the distinct `https://cognito-idp.eu-west-2.amazonaws.com/POOL_ID` token issuer. The app's OAuth endpoints are on the managed-login domain; JWT discovery/JWKS use the issuer.
 
-ECS receives `AWS_REGION=eu-west-2`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and `CORS_ORIGINS=https://app.vamberic.com,http://localhost:5173`. The CORS value is a comma-separated list, never `*`. Confirm the API image parses that format, permits bearer authorization/preflight requests, validates signature/issuer/expiry, `token_use=access` and the access token's `client_id`, and protects intended routes while leaving health checks available. Infrastructure does not implement JWT validation. The approved immutable dev API image tag is `5f15a3e`, configured in `config/dev.ts`. No custom API scope/authorization model is assumed.
+ECS receives `AWS_REGION=eu-west-2`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and `CORS_ORIGINS=https://app.vamberic.com,http://localhost:5173`. The CORS value is a comma-separated list, never `*`. Confirm the API image parses that format, permits bearer authorization/preflight requests, validates signature/issuer/expiry, `token_use=access` and the access token's `client_id`, and protects intended routes while leaving health checks available. Infrastructure does not implement JWT validation. The immutable dev API image tag is supplied through the application-owned `ApiImageTag` CloudFormation parameter; dev config contains no static tag. No custom API scope/authorization model is assumed.
 
 The dev API also receives `PUBLIC_ENQUIRY_CORS_ORIGINS=https://h-v-m.agency` from `config/dev.ts` for public enquiries. This server-side allowlist is separate from authenticated Vapp `CORS_ORIGINS`; HVM is not added to the private Vapp allowlist. Neither allowlist uses wildcard CORS.
 
@@ -184,12 +184,12 @@ The role uses GitHub's immutable subject format, including owner ID `209590030` 
 
 ## Decisions before deployment
 
-The repository and CloudFront certificate reuse are confirmed. The London certificate and API image `5f15a3e` are also confirmed. Remaining prerequisites are the existing GitHub OIDC provider, protected `vapp` Environment setup in `auriqa-dev/vamberic-platform-api`, and release image/application readiness. `localhost:5173/`, comma-separated CORS and a full-URL Cognito domain are the explicit integration defaults. Dev will own `app.vamberic.com` and `api.vamberic.com` initially; plan any later production cutover separately. No extra human approval is needed to review or synthesize these changes.
+The repository and CloudFront certificate reuse are confirmed. The London certificate is confirmed; verify the running API image before bootstrapping `ApiImageTag` as documented in the [release pipeline handoff](dev-release-pipeline.md). Remaining prerequisites are the existing GitHub OIDC provider, protected `vapp` Environment setup in `auriqa-dev/vamberic-platform-api`, and release image/application readiness. `localhost:5173/`, comma-separated CORS and a full-URL Cognito domain are the explicit integration defaults. Dev will own `app.vamberic.com` and `api.vamberic.com` initially; plan any later production cutover separately. No extra human approval is needed to review or synthesize these changes.
 
 
 ## HVM enquiry notification email
 
-Dev config enables `NOTIFICATION_EMAIL_ENABLED=true`, sets `NOTIFICATION_EMAIL_FROM=notifications@vamberic.com`, and sets `PRODUCT_ENQUIRY_NOTIFICATION_RECIPIENTS_JSON={"product_01m2wffbf3p9p19d3nd1s2fp3x":["notifications@vamberic.com"]}`. The API image remains `5f15a3e`.
+Dev config enables `NOTIFICATION_EMAIL_ENABLED=true`, sets `NOTIFICATION_EMAIL_FROM=notifications@vamberic.com`, and sets `PRODUCT_ENQUIRY_NOTIFICATION_RECIPIENTS_JSON={"product_01m2wffbf3p9p19d3nd1s2fp3x":["notifications@vamberic.com"]}`. The API image is selected by `ApiImageTag`; these runtime variables are independent of its value.
 
 **Temporary diagnostic — isolate SES resource-level authorization.** The application task role `vamberic-dev-api-task` currently receives exactly `Allow`, `ses:SendEmail`, `Resource: "*"`, with no conditions. This temporarily replaces the two identity-scoped resources to investigate the reported live AccessDenied despite successful admin sends and IAM simulation. It is not the intended permanent policy. No `ses:SendRawEmail`, wildcard SES action, SES administration permission, or execution-role SES grant is added.
 
@@ -199,3 +199,5 @@ After an explicitly authorised deployment and notification retry, record the res
 
 
 Before deployment, confirm the `vamberic.com` domain identity is verified for SES sending in `eu-west-2`. If the account is in the SES sandbox, the recipient must also be verified (the configured recipient is the same address). This infrastructure change does not create/verify SES identities, request production access, deploy, or send mail; live SES status has not been checked. See [AWS SES IAM scoping](https://docs.aws.amazon.com/ses/latest/dg/control-user-access.html) and [SES SendEmail prerequisites](https://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html).
+
+See [automated dev release prerequisites](dev-release-pipeline.md) for image ownership, parameter retention, the scoped API GitHub policy, Vapp invalidation waiter permission, and the one-time operator rollout.

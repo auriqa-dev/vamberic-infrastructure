@@ -131,7 +131,7 @@ describe('Vamberic infrastructure assumptions', () => {
             Timeout: 5,
           },
           Image: {
-            'Fn::Join': ['', Match.arrayWith([':test-abcdef0'])],
+            'Fn::Join': ['', Match.arrayWith([{ Ref: 'ApiImageTag' }])],
           },
         }),
       ]),
@@ -347,7 +347,7 @@ describe('Vamberic infrastructure assumptions', () => {
 });
 
 describe('authenticated Vapp', () => {
-  test('configured dev release imports the issued certificate and pins the approved image', () => {
+  test('configured dev release imports the issued certificate and uses the image parameter', () => {
     const config = getEnvironmentConfig('dev');
     const stacks = createStacks(config.apiCertificateArn, config.apiImageTag);
     const template = Template.fromStack(stacks.api);
@@ -365,7 +365,7 @@ describe('authenticated Vapp', () => {
     template.hasResourceProperties('AWS::ECS::TaskDefinition', {
       ContainerDefinitions: Match.arrayWith([
         Match.objectLike({
-          Image: { 'Fn::Join': ['', Match.arrayWith([':5f15a3e'])] },
+          Image: { 'Fn::Join': ['', Match.arrayWith([{ Ref: 'ApiImageTag' }])] },
         }),
       ]),
     });
@@ -373,6 +373,25 @@ describe('authenticated Vapp', () => {
     expect(stacks.api.dependencies.map((stack) => stack.stackName)).not.toContain(
       'VambericDevApiCertificate',
     );
+  });
+
+  test('dev image parameter has no default and permits only immutable hexadecimal tags', () => {
+    const template = Template.fromStack(createStacks().api).toJSON();
+    const parameter = template.Parameters.ApiImageTag;
+    expect(parameter.Type).toBe('String');
+    expect(parameter).not.toHaveProperty('Default');
+    const pattern = new RegExp('^(?:' + parameter.AllowedPattern + ')$');
+    expect(pattern.test('a830200')).toBe(true);
+    expect(pattern.test('a'.repeat(40))).toBe(true);
+    for (const invalid of ['latest', '', 'abc', 'a'.repeat(41), 'release', 'abc1234:tag']) {
+      expect(pattern.test(invalid)).toBe(false);
+    }
+    const task = Object.values(template.Resources).find(
+      (resource) => (resource as { Type: string }).Type === 'AWS::ECS::TaskDefinition',
+    ) as { Properties: { ContainerDefinitions: Array<{ Image?: unknown }> } };
+    delete task.Properties.ContainerDefinitions[0].Image;
+    delete template.Parameters.ApiImageTag;
+    expect(JSON.stringify(template)).not.toContain('ApiImageTag');
   });
 
   test('admin-only email users with optional TOTP and a public code-flow client', () => {

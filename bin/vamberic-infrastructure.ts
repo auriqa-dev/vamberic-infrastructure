@@ -14,6 +14,7 @@ import { SecurityStack } from '../lib/security-stack';
 import { WebsiteStack } from '../lib/website-stack';
 import { HvmCertificateStack } from '../lib/hvm-certificate-stack';
 import { HvmWebsiteStack } from '../lib/hvm-website-stack';
+import { ApiDeploymentPermissionsStack } from '../lib/api-deployment-permissions-stack';
 
 const app = new cdk.App();
 const environmentName = process.env.DEPLOY_ENV ?? app.node.tryGetContext('environment');
@@ -23,10 +24,11 @@ const config = {
   account: deploymentAccount,
   region: baseConfig.region,
 };
-const imageTag = resolveApiImageTag(
-  config,
-  process.env.API_IMAGE_TAG ?? app.node.tryGetContext('imageTag'),
-);
+// Dev releases own the CloudFormation parameter; ambient/context pins apply only to prod.
+const imageTag =
+  config.name === 'dev'
+    ? undefined
+    : resolveApiImageTag(config, process.env.API_IMAGE_TAG ?? app.node.tryGetContext('imageTag'));
 
 const network = new NetworkStack(app, config);
 const security = new SecurityStack(app, config, network);
@@ -40,7 +42,10 @@ const apiCertificate =
       config.apiCertificateArn ??
       new ApiCertificateStack(app, config).certificate)
     : undefined;
-if (config.name === 'dev') new VappStack(app, config);
+if (config.name === 'dev') {
+  new VappStack(app, config);
+  new ApiDeploymentPermissionsStack(app);
+}
 const api = new ApiStack(
   app,
   config,

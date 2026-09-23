@@ -119,23 +119,23 @@ The examples below use `dev`; substitute the `Prod` stack names and `-c environm
      VambericDevRegistry
    ```
 
-3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev currently uses `5f15a3e`. Do not use `latest`.
+3. Build the API image, authenticate Docker to the emitted ECR repository URI, and push it with an immutable release tag. Dev takes its image tag from the `ApiImageTag` CloudFormation parameter. Do not use `latest`.
 
 4. Populate the runtime secret through an approved secret-management process.
 
-5. Review the API change. Dev uses its configured tag by default:
+5. Review the API change. Dev uses the existing application-owned parameter value after bootstrap:
 
    ```bash
    npm run cdk -- diff VambericDevApi
    ```
 
-6. Deploy the API service with the same configured immutable tag:
+6. For initial creation/bootstrap, supply the verified immutable tag as described in the [release pipeline rollout](docs/dev-release-pipeline.md). Later infrastructure updates retain its existing value:
 
    ```bash
-   npm run cdk -- deploy VambericDevApi
+   npm run cdk -- deploy VambericDevApi --previous-parameters true
    ```
 
-The dev tag is environment-specific and stored in `config/dev.ts`; it is not embedded in the API stack. Production intentionally remains unset and will fail synthesis until a production tag is supplied with `-c imageTag=...` or `API_IMAGE_TAG=...`. Overrides are also available for dev releases. The mutable `latest` tag is rejected in every environment.
+Dev has no static tag: `ApiImageTag` is a required String parameter with no default, owned by routine application releases. CDK owns the task/service and retains previous parameter values when no override is supplied. Dev ignores `API_IMAGE_TAG` and `-c imageTag`; use `--parameters VambericDevApi:ApiImageTag=<verified-tag>` for the one-time bootstrap. Production retains explicit `-c imageTag=...` / `API_IMAGE_TAG=...` handling. The mutable `latest` tag is rejected. See the [exact rollout and IAM migration](docs/dev-release-pipeline.md), including required removal of the API GitHub role’s legacy `AmazonECS_FullAccess` attachment.
 
 CDK dependencies are explicit: security depends on network, and API depends on network, security, observability, and registry. Deploying prerequisites separately is still required so an image can be pushed before ECS begins service stabilization.
 
@@ -237,3 +237,5 @@ The dev configuration deliberately starts with one Fargate task and one NAT Gate
 ## HVM production website
 
 Dedicated HVM stacks host `h-v-m.agency` independently of Vamberic and Vapp: `VambericProdHvmCertificate` (`us-east-1`) and `VambericProdHvmWebsite` (`eu-west-2`). See the [HVM hosting and DNS handoff](docs/hvm-website.md) for staged certificate validation, the required certificate ARN parameter, GitHub `hvm-prod` OIDC setup, outputs and Namecheap records. These stacks are not part of the existing dev API deployment workflow.
+
+The dev application release policy is managed separately by `VambericDevApiDeploymentPermissions`. Bootstrap it and the `ApiImageTag` parameter before enabling the platform repository’s automated API/Vapp pipeline; see [release prerequisites](docs/dev-release-pipeline.md).

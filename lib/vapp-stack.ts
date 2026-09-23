@@ -86,7 +86,7 @@ export class VappStack extends cdk.Stack {
     );
     role.addToPolicy(
       new iam.PolicyStatement({
-        actions: ['cloudfront:CreateInvalidation'],
+        actions: ['cloudfront:CreateInvalidation', 'cloudfront:GetInvalidation'],
         resources: [
           `arn:${this.partition}:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
         ],

@@ -1,0 +1,1729 @@
+{
+  "VambericDevApi": {
+    "Description": "Vamberic dev ECS API runtime",
+    "Resources": {
+      "ApiCluster7CE9CBE6": {
+        "Type": "AWS::ECS::Cluster",
+        "Properties": {
+          "ClusterName": "vamberic-dev-api",
+          "ClusterSettings": [
+            {
+              "Name": "containerInsights",
+              "Value": "disabled"
+            }
+          ]
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiCluster/Resource"
+        }
+      },
+      "TaskExecutionRole250D2532": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Statement": [
+              {
+                "Action": "sts:AssumeRole",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs-tasks.amazonaws.com"
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "ManagedPolicyArns": [
+            {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+                ]
+              ]
+            }
+          ],
+          "RoleName": "vamberic-dev-api-execution"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/TaskExecutionRole/Resource"
+        }
+      },
+      "TaskExecutionRoleDefaultPolicyA84DD1B0": {
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "secretsmanager:GetSecretValue",
+                  "secretsmanager:DescribeSecret"
+                ],
+                "Effect": "Allow",
+                "Resource": "arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL"
+              },
+              {
+                "Action": [
+                  "ecr:BatchCheckLayerAvailability",
+                  "ecr:GetDownloadUrlForLayer",
+                  "ecr:BatchGetImage"
+                ],
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::ImportValue": "VambericDevRegistry:ExportsOutputFnGetAttApiRepositoryB8378B43ArnC5B66F61"
+                }
+              },
+              {
+                "Action": "ecr:GetAuthorizationToken",
+                "Effect": "Allow",
+                "Resource": "*"
+              },
+              {
+                "Action": [
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ],
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::ImportValue": "VambericDevObservability:ExportsOutputFnGetAttApiLogGroup1DEDFC07ArnD364EB60"
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "TaskExecutionRoleDefaultPolicyA84DD1B0",
+          "Roles": [
+            {
+              "Ref": "TaskExecutionRole250D2532"
+            }
+          ]
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/TaskExecutionRole/DefaultPolicy/Resource"
+        }
+      },
+      "ApplicationTaskRole69491568": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Statement": [
+              {
+                "Action": "sts:AssumeRole",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs-tasks.amazonaws.com"
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "Description": "Application permissions start empty and are granted per feature",
+          "RoleName": "vamberic-dev-api-task"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApplicationTaskRole/Resource"
+        }
+      },
+      "ApplicationTaskRoleDefaultPolicy3E6397C6": {
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "ses:SendEmail",
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "ApplicationTaskRoleDefaultPolicy3E6397C6",
+          "Roles": [
+            {
+              "Ref": "ApplicationTaskRole69491568"
+            }
+          ]
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApplicationTaskRole/DefaultPolicy/Resource"
+        }
+      },
+      "ApiTaskDefinition51EA709E": {
+        "Type": "AWS::ECS::TaskDefinition",
+        "Properties": {
+          "ContainerDefinitions": [
+            {
+              "Environment": [
+                {
+                  "Name": "NODE_ENV",
+                  "Value": "production"
+                },
+                {
+                  "Name": "DEPLOYMENT_ENV",
+                  "Value": "dev"
+                },
+                {
+                  "Name": "NOTIFICATION_EMAIL_ENABLED",
+                  "Value": "true"
+                },
+                {
+                  "Name": "NOTIFICATION_EMAIL_FROM",
+                  "Value": "notifications@vamberic.com"
+                },
+                {
+                  "Name": "PRODUCT_ENQUIRY_NOTIFICATION_RECIPIENTS_JSON",
+                  "Value": "{\"product_01m2wffbf3p9p19d3nd1s2fp3x\":[\"notifications@vamberic.com\"]}"
+                },
+                {
+                  "Name": "PUBLIC_ENQUIRY_CORS_ORIGINS",
+                  "Value": "https://h-v-m.agency"
+                },
+                {
+                  "Name": "AWS_REGION",
+                  "Value": "eu-west-2"
+                },
+                {
+                  "Name": "COGNITO_USER_POOL_ID",
+                  "Value": {
+                    "Fn::ImportValue": "VambericDevAuth:ExportsOutputRefVappUserPoolD8FB106468AC91EC"
+                  }
+                },
+                {
+                  "Name": "COGNITO_CLIENT_ID",
+                  "Value": {
+                    "Fn::ImportValue": "VambericDevAuth:ExportsOutputRefVappUserPoolVappBrowserClientF6F276C1B0C5ACAA"
+                  }
+                },
+                {
+                  "Name": "CORS_ORIGINS",
+                  "Value": "https://app.vamberic.com,http://localhost:5173"
+                }
+              ],
+              "Essential": true,
+              "HealthCheck": {
+                "Command": [
+                  "CMD",
+                  "node",
+                  "-e",
+                  "fetch('http://127.0.0.1:3000/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"
+                ],
+                "Interval": 30,
+                "Retries": 3,
+                "StartPeriod": 30,
+                "Timeout": 5
+              },
+              "Image": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::Select": [
+                        4,
+                        {
+                          "Fn::Split": [
+                            ":",
+                            {
+                              "Fn::ImportValue": "VambericDevRegistry:ExportsOutputFnGetAttApiRepositoryB8378B43ArnC5B66F61"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    ".dkr.ecr.",
+                    {
+                      "Fn::Select": [
+                        3,
+                        {
+                          "Fn::Split": [
+                            ":",
+                            {
+                              "Fn::ImportValue": "VambericDevRegistry:ExportsOutputFnGetAttApiRepositoryB8378B43ArnC5B66F61"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    ".",
+                    {
+                      "Ref": "AWS::URLSuffix"
+                    },
+                    "/",
+                    {
+                      "Fn::ImportValue": "VambericDevRegistry:ExportsOutputRefApiRepositoryB8378B43D566CA3C"
+                    },
+                    ":5f15a3e"
+                  ]
+                ]
+              },
+              "LogConfiguration": {
+                "LogDriver": "awslogs",
+                "Options": {
+                  "awslogs-group": {
+                    "Fn::ImportValue": "VambericDevObservability:ExportsOutputRefApiLogGroup1DEDFC079094F694"
+                  },
+                  "awslogs-stream-prefix": "ecs",
+                  "awslogs-region": "eu-west-2"
+                }
+              },
+              "Name": "api",
+              "PortMappings": [
+                {
+                  "ContainerPort": 3000,
+                  "Protocol": "tcp"
+                }
+              ],
+              "Secrets": [
+                {
+                  "Name": "MONGODB_URI",
+                  "ValueFrom": "arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL:MONGODB_URI::"
+                }
+              ]
+            }
+          ],
+          "Cpu": "256",
+          "ExecutionRoleArn": {
+            "Fn::GetAtt": [
+              "TaskExecutionRole250D2532",
+              "Arn"
+            ]
+          },
+          "Family": "vamberic-dev-api",
+          "Memory": "512",
+          "NetworkMode": "awsvpc",
+          "RequiresCompatibilities": [
+            "FARGATE"
+          ],
+          "TaskRoleArn": {
+            "Fn::GetAtt": [
+              "ApplicationTaskRole69491568",
+              "Arn"
+            ]
+          }
+        },
+        "DependsOn": [
+          "TaskExecutionRoleDefaultPolicyA84DD1B0"
+        ],
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiTaskDefinition/Resource"
+        }
+      },
+      "ApiServiceC9037CF0": {
+        "Type": "AWS::ECS::Service",
+        "Properties": {
+          "Cluster": {
+            "Ref": "ApiCluster7CE9CBE6"
+          },
+          "DeploymentConfiguration": {
+            "Alarms": {
+              "AlarmNames": [],
+              "Enable": false,
+              "Rollback": false
+            },
+            "DeploymentCircuitBreaker": {
+              "Enable": true,
+              "Rollback": true
+            },
+            "MaximumPercent": 200,
+            "MinimumHealthyPercent": 100
+          },
+          "DeploymentController": {
+            "Type": "ECS"
+          },
+          "DesiredCount": 1,
+          "EnableECSManagedTags": true,
+          "HealthCheckGracePeriodSeconds": 60,
+          "LaunchType": "FARGATE",
+          "LoadBalancers": [
+            {
+              "ContainerName": "api",
+              "ContainerPort": 3000,
+              "TargetGroupArn": {
+                "Ref": "ApiLoadBalancerHttpListenerApiTargetsGroup70E80398"
+              }
+            }
+          ],
+          "NetworkConfiguration": {
+            "AwsvpcConfiguration": {
+              "AssignPublicIp": "DISABLED",
+              "SecurityGroups": [
+                {
+                  "Fn::ImportValue": "VambericDevSecurity:ExportsOutputFnGetAttServiceSecurityGroup61DE1A49GroupIdF955CEC9"
+                }
+              ],
+              "Subnets": [
+                {
+                  "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpcapplicationSubnet1Subnet8B68205B1F66BB2C"
+                },
+                {
+                  "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpcapplicationSubnet2Subnet296709622ABA6FC7"
+                }
+              ]
+            }
+          },
+          "ServiceName": "vamberic-dev-api",
+          "TaskDefinition": {
+            "Ref": "ApiTaskDefinition51EA709E"
+          }
+        },
+        "DependsOn": [
+          "ApiLoadBalancerHttpsListener5840FF00",
+          "ApplicationTaskRoleDefaultPolicy3E6397C6",
+          "ApplicationTaskRole69491568"
+        ],
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiService/Service"
+        }
+      },
+      "ApiLoadBalancer779470C6": {
+        "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+        "Properties": {
+          "LoadBalancerAttributes": [
+            {
+              "Key": "deletion_protection.enabled",
+              "Value": "false"
+            }
+          ],
+          "Name": "vamberic-dev-api",
+          "Scheme": "internet-facing",
+          "SecurityGroups": [
+            {
+              "Fn::ImportValue": "VambericDevSecurity:ExportsOutputFnGetAttLoadBalancerSecurityGroup3036A0FCGroupId98A51D63"
+            }
+          ],
+          "Subnets": [
+            {
+              "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpcpublicSubnet1Subnet2BB74ED74EB42ADC"
+            },
+            {
+              "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpcpublicSubnet2SubnetE34B022AC8BB6627"
+            }
+          ],
+          "Type": "application"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiLoadBalancer/Resource"
+        }
+      },
+      "ApiLoadBalancerHttpListener151B7FEE": {
+        "Type": "AWS::ElasticLoadBalancingV2::Listener",
+        "Properties": {
+          "DefaultActions": [
+            {
+              "RedirectConfig": {
+                "Port": "443",
+                "Protocol": "HTTPS",
+                "StatusCode": "HTTP_301"
+              },
+              "Type": "redirect"
+            }
+          ],
+          "LoadBalancerArn": {
+            "Ref": "ApiLoadBalancer779470C6"
+          },
+          "Port": 80,
+          "Protocol": "HTTP"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiLoadBalancer/HttpListener/Resource"
+        }
+      },
+      "ApiLoadBalancerHttpListenerApiTargetsGroup70E80398": {
+        "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+        "Properties": {
+          "HealthCheckIntervalSeconds": 30,
+          "HealthCheckPath": "/health",
+          "Matcher": {
+            "HttpCode": "200-399"
+          },
+          "Port": 3000,
+          "Protocol": "HTTP",
+          "TargetGroupAttributes": [
+            {
+              "Key": "stickiness.enabled",
+              "Value": "false"
+            }
+          ],
+          "TargetType": "ip",
+          "VpcId": {
+            "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpc8378EB38272D6E3A"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiLoadBalancer/HttpListener/ApiTargetsGroup/Resource"
+        }
+      },
+      "ApiLoadBalancerHttpsListener5840FF00": {
+        "Type": "AWS::ElasticLoadBalancingV2::Listener",
+        "Properties": {
+          "Certificates": [
+            {
+              "CertificateArn": "arn:aws:acm:eu-west-2:755905325223:certificate/dba9f811-56bd-4168-8618-0523efa1a118"
+            }
+          ],
+          "DefaultActions": [
+            {
+              "TargetGroupArn": {
+                "Ref": "ApiLoadBalancerHttpListenerApiTargetsGroup70E80398"
+              },
+              "Type": "forward"
+            }
+          ],
+          "LoadBalancerArn": {
+            "Ref": "ApiLoadBalancer779470C6"
+          },
+          "Port": 443,
+          "Protocol": "HTTPS",
+          "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/ApiLoadBalancer/HttpsListener/Resource"
+        }
+      },
+      "CDKMetadata": {
+        "Type": "AWS::CDK::Metadata",
+        "Properties": {
+          "Analytics": "v2:deflate64:H4sIAAAAAAAA/11PzU7DMAx+lt3TMKIJcYWhcUEa6nZHXupVXrOkSpxOKMq7o7QdKpy+X8u2kurpWa5XcAuVbrrK0EmmA4PuRI3BRa9RwC18JdRBpq2JgdGL7dne6Q58C4xHCN0bnskSk7Ol8N9xloEs+oU3zx7QD6SxDM00C4KrTLUzozvipzOkv4ucWBZoIDBp46A5gQGrybaDkuml7w1pKCs+HDSvYzZd/UcvexQY7dy580V+BN8iv3sX++m3X5lzMfaR+8hZWNegvISHQW2kepTr1SUQVT5apivKesIfu+2/oXQBAAA="
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevApi/CDKMetadata/Default"
+        }
+      }
+    },
+    "Outputs": {
+      "ApiDomainName": {
+        "Value": "api.vamberic.com"
+      },
+      "ApiBaseUrl": {
+        "Value": "https://api.vamberic.com"
+      },
+      "ApiLoadBalancerDnsName": {
+        "Value": {
+          "Fn::GetAtt": [
+            "ApiLoadBalancer779470C6",
+            "DNSName"
+          ]
+        }
+      },
+      "ApiClusterName": {
+        "Description": "ECS cluster for API services and operator-run one-off tasks",
+        "Value": {
+          "Ref": "ApiCluster7CE9CBE6"
+        }
+      },
+      "ApiTaskDefinitionArn": {
+        "Description": "API task definition to reuse with a container command override",
+        "Value": {
+          "Ref": "ApiTaskDefinition51EA709E"
+        }
+      },
+      "ApiPrivateSubnetIds": {
+        "Description": "Comma-separated private application subnet IDs for one-off Fargate tasks",
+        "Value": {
+          "Fn::Join": [
+            ",",
+            [
+              {
+                "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpcapplicationSubnet1Subnet8B68205B1F66BB2C"
+              },
+              {
+                "Fn::ImportValue": "VambericDevNetwork:ExportsOutputRefVpcapplicationSubnet2Subnet296709622ABA6FC7"
+              }
+            ]
+          ]
+        }
+      },
+      "ApiTaskSecurityGroupId": {
+        "Description": "Security group for API services and one-off Fargate tasks",
+        "Value": {
+          "Fn::ImportValue": "VambericDevSecurity:ExportsOutputFnGetAttServiceSecurityGroup61DE1A49GroupIdF955CEC9"
+        }
+      },
+      "ApiContainerName": {
+        "Description": "Container name to target in an ECS command override",
+        "Value": "api"
+      }
+    },
+    "Parameters": {
+      "BootstrapVersion": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Default": "/cdk-bootstrap/hnb659fds/version",
+        "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+      }
+    },
+    "Rules": {
+      "CheckBootstrapVersion": {
+        "Assertions": [
+          {
+            "Assert": {
+              "Fn::Not": [
+                {
+                  "Fn::Contains": [
+                    [
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5"
+                    ],
+                    {
+                      "Ref": "BootstrapVersion"
+                    }
+                  ]
+                }
+              ]
+            },
+            "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+          }
+        ]
+      }
+    }
+  },
+  "VambericDevVapp": {
+    "Description": "Separate static Vapp hosting for app.vamberic.com",
+    "Resources": {
+      "VappBucketF8CB2AAC": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "BucketEncryption": {
+            "ServerSideEncryptionConfiguration": [
+              {
+                "ServerSideEncryptionByDefault": {
+                  "SSEAlgorithm": "AES256"
+                }
+              }
+            ]
+          },
+          "PublicAccessBlockConfiguration": {
+            "BlockPublicAcls": true,
+            "BlockPublicPolicy": true,
+            "IgnorePublicAcls": true,
+            "RestrictPublicBuckets": true
+          }
+        },
+        "UpdateReplacePolicy": "Retain",
+        "DeletionPolicy": "Retain",
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/VappBucket/Resource"
+        }
+      },
+      "VappBucketPolicy30B3258B": {
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": {
+            "Ref": "VappBucketF8CB2AAC"
+          },
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "s3:*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                },
+                "Effect": "Deny",
+                "Principal": {
+                  "AWS": "*"
+                },
+                "Resource": [
+                  {
+                    "Fn::GetAtt": [
+                      "VappBucketF8CB2AAC",
+                      "Arn"
+                    ]
+                  },
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::GetAtt": [
+                            "VappBucketF8CB2AAC",
+                            "Arn"
+                          ]
+                        },
+                        "/*"
+                      ]
+                    ]
+                  }
+                ]
+              },
+              {
+                "Action": "s3:GetObject",
+                "Condition": {
+                  "StringEquals": {
+                    "AWS:SourceArn": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":cloudfront::",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          ":distribution/",
+                          {
+                            "Ref": "VappDistributionEC7887F2"
+                          }
+                        ]
+                      ]
+                    }
+                  }
+                },
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "cloudfront.amazonaws.com"
+                },
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "VappBucketF8CB2AAC",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/VappBucket/Policy/Resource"
+        }
+      },
+      "VappDistributionOrigin1S3OriginAccessControl0B5F361B": {
+        "Type": "AWS::CloudFront::OriginAccessControl",
+        "Properties": {
+          "OriginAccessControlConfig": {
+            "Name": "VambericDevVappVappDistributOrigin1S3OriginAccessControl6E1DA9D6",
+            "OriginAccessControlOriginType": "s3",
+            "SigningBehavior": "always",
+            "SigningProtocol": "sigv4"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/VappDistribution/Origin1/S3OriginAccessControl/Resource"
+        }
+      },
+      "VappDistributionEC7887F2": {
+        "Type": "AWS::CloudFront::Distribution",
+        "Properties": {
+          "DistributionConfig": {
+            "Aliases": [
+              "app.vamberic.com"
+            ],
+            "CustomErrorResponses": [
+              {
+                "ErrorCachingMinTTL": 0,
+                "ErrorCode": 403,
+                "ResponseCode": 200,
+                "ResponsePagePath": "/index.html"
+              },
+              {
+                "ErrorCachingMinTTL": 0,
+                "ErrorCode": 404,
+                "ResponseCode": 200,
+                "ResponsePagePath": "/index.html"
+              }
+            ],
+            "DefaultCacheBehavior": {
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "Compress": true,
+              "TargetOriginId": "VambericDevVappVappDistributionOrigin1D0E07045",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            "DefaultRootObject": "index.html",
+            "Enabled": true,
+            "HttpVersion": "http2",
+            "IPV6Enabled": true,
+            "Origins": [
+              {
+                "DomainName": {
+                  "Fn::GetAtt": [
+                    "VappBucketF8CB2AAC",
+                    "RegionalDomainName"
+                  ]
+                },
+                "Id": "VambericDevVappVappDistributionOrigin1D0E07045",
+                "OriginAccessControlId": {
+                  "Fn::GetAtt": [
+                    "VappDistributionOrigin1S3OriginAccessControl0B5F361B",
+                    "Id"
+                  ]
+                },
+                "S3OriginConfig": {
+                  "OriginAccessIdentity": ""
+                }
+              }
+            ],
+            "ViewerCertificate": {
+              "AcmCertificateArn": "arn:aws:acm:us-east-1:755905325223:certificate/aee93e4c-7a6e-4b1b-9838-eb836b3e76f8",
+              "MinimumProtocolVersion": "TLSv1.2_2021",
+              "SslSupportMethod": "sni-only"
+            }
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/VappDistribution/Resource"
+        }
+      },
+      "VappDeploymentRoleB8CD46CD": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Statement": [
+              {
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                    "token.actions.githubusercontent.com:sub": "repo:auriqa-dev@209590030/vamberic-platform-api@1362482756:environment:vapp"
+                  }
+                },
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":iam::755905325223:oidc-provider/token.actions.githubusercontent.com"
+                      ]
+                    ]
+                  }
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "Description": "Deploy Vapp assets from the protected GitHub vapp Environment",
+          "MaxSessionDuration": 3600
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/VappDeploymentRole/Resource"
+        }
+      },
+      "VappDeploymentRoleDefaultPolicyB5D54A8C": {
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "s3:ListBucket",
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "VappBucketF8CB2AAC",
+                    "Arn"
+                  ]
+                }
+              },
+              {
+                "Action": [
+                  "s3:PutObject",
+                  "s3:DeleteObject"
+                ],
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "VappBucketF8CB2AAC",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              },
+              {
+                "Action": "cloudfront:CreateInvalidation",
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":cloudfront::755905325223:distribution/",
+                      {
+                        "Ref": "VappDistributionEC7887F2"
+                      }
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "VappDeploymentRoleDefaultPolicyB5D54A8C",
+          "Roles": [
+            {
+              "Ref": "VappDeploymentRoleB8CD46CD"
+            }
+          ]
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/VappDeploymentRole/DefaultPolicy/Resource"
+        }
+      },
+      "CDKMetadata": {
+        "Type": "AWS::CDK::Metadata",
+        "Properties": {
+          "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WOzQ6CQAyEn8X7UhGM8erPHQMPYGBZTGXZmm1XYja8u1FM9OLpm047mWaQbbaQLuqRE932icUGYiW17lU98jlyDnEfdG9EHTr3UTNOZFE/vvY8T0pbCm3nyQnEI7J4bIIgOVXlhccLup3WhvlATjzZV/6P/RueFNYDxJKsea3e/D7wqZ5UaZiC1++bIsgtyKQctQauvLxna8hWkC6ujJj44AQHA+XMJ1frSC0IAQAA"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericDevVapp/CDKMetadata/Default"
+        }
+      }
+    },
+    "Outputs": {
+      "VappDeploymentRoleArn": {
+        "Value": {
+          "Fn::GetAtt": [
+            "VappDeploymentRoleB8CD46CD",
+            "Arn"
+          ]
+        }
+      },
+      "VappBucketName": {
+        "Value": {
+          "Ref": "VappBucketF8CB2AAC"
+        }
+      },
+      "VappDistributionId": {
+        "Value": {
+          "Ref": "VappDistributionEC7887F2"
+        }
+      },
+      "VappDistributionDomainName": {
+        "Value": {
+          "Fn::GetAtt": [
+            "VappDistributionEC7887F2",
+            "DomainName"
+          ]
+        }
+      }
+    },
+    "Parameters": {
+      "BootstrapVersion": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Default": "/cdk-bootstrap/hnb659fds/version",
+        "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+      }
+    },
+    "Rules": {
+      "CheckBootstrapVersion": {
+        "Assertions": [
+          {
+            "Assert": {
+              "Fn::Not": [
+                {
+                  "Fn::Contains": [
+                    [
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5"
+                    ],
+                    {
+                      "Ref": "BootstrapVersion"
+                    }
+                  ]
+                }
+              ]
+            },
+            "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+          }
+        ]
+      }
+    }
+  },
+  "VambericProdWebsite": {
+    "Description": "Production static website hosting for www.vamberic.com",
+    "Resources": {
+      "WebsiteBucket75C24D94": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "BucketEncryption": {
+            "ServerSideEncryptionConfiguration": [
+              {
+                "ServerSideEncryptionByDefault": {
+                  "SSEAlgorithm": "AES256"
+                }
+              }
+            ]
+          },
+          "PublicAccessBlockConfiguration": {
+            "BlockPublicAcls": true,
+            "BlockPublicPolicy": true,
+            "IgnorePublicAcls": true,
+            "RestrictPublicBuckets": true
+          }
+        },
+        "UpdateReplacePolicy": "Retain",
+        "DeletionPolicy": "Retain",
+        "Metadata": {
+          "aws:cdk:path": "VambericProdWebsite/WebsiteBucket/Resource"
+        }
+      },
+      "WebsiteBucketPolicyE10E3262": {
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": {
+            "Ref": "WebsiteBucket75C24D94"
+          },
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "s3:*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                },
+                "Effect": "Deny",
+                "Principal": {
+                  "AWS": "*"
+                },
+                "Resource": [
+                  {
+                    "Fn::GetAtt": [
+                      "WebsiteBucket75C24D94",
+                      "Arn"
+                    ]
+                  },
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::GetAtt": [
+                            "WebsiteBucket75C24D94",
+                            "Arn"
+                          ]
+                        },
+                        "/*"
+                      ]
+                    ]
+                  }
+                ]
+              },
+              {
+                "Action": "s3:GetObject",
+                "Condition": {
+                  "StringEquals": {
+                    "AWS:SourceArn": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":cloudfront::",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          ":distribution/",
+                          {
+                            "Ref": "WebsiteDistribution75DCDA0B"
+                          }
+                        ]
+                      ]
+                    }
+                  }
+                },
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "cloudfront.amazonaws.com"
+                },
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "WebsiteBucket75C24D94",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdWebsite/WebsiteBucket/Policy/Resource"
+        }
+      },
+      "WebsiteDistributionOrigin1S3OriginAccessControlAD90E5FA": {
+        "Type": "AWS::CloudFront::OriginAccessControl",
+        "Properties": {
+          "OriginAccessControlConfig": {
+            "Name": "VambericProdWebsiteWebsiteDiOrigin1S3OriginAccessControlCBAF2A9C",
+            "OriginAccessControlOriginType": "s3",
+            "SigningBehavior": "always",
+            "SigningProtocol": "sigv4"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdWebsite/WebsiteDistribution/Origin1/S3OriginAccessControl/Resource"
+        }
+      },
+      "WebsiteDistribution75DCDA0B": {
+        "Type": "AWS::CloudFront::Distribution",
+        "Properties": {
+          "DistributionConfig": {
+            "Aliases": [
+              "www.vamberic.com"
+            ],
+            "CustomErrorResponses": [
+              {
+                "ErrorCachingMinTTL": 0,
+                "ErrorCode": 403,
+                "ResponseCode": 200,
+                "ResponsePagePath": "/index.html"
+              },
+              {
+                "ErrorCachingMinTTL": 0,
+                "ErrorCode": 404,
+                "ResponseCode": 200,
+                "ResponsePagePath": "/index.html"
+              }
+            ],
+            "DefaultCacheBehavior": {
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "Compress": true,
+              "TargetOriginId": "VambericProdWebsiteWebsiteDistributionOrigin106833ACE",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            "DefaultRootObject": "index.html",
+            "Enabled": true,
+            "HttpVersion": "http2",
+            "IPV6Enabled": true,
+            "Origins": [
+              {
+                "DomainName": {
+                  "Fn::GetAtt": [
+                    "WebsiteBucket75C24D94",
+                    "RegionalDomainName"
+                  ]
+                },
+                "Id": "VambericProdWebsiteWebsiteDistributionOrigin106833ACE",
+                "OriginAccessControlId": {
+                  "Fn::GetAtt": [
+                    "WebsiteDistributionOrigin1S3OriginAccessControlAD90E5FA",
+                    "Id"
+                  ]
+                },
+                "S3OriginConfig": {
+                  "OriginAccessIdentity": ""
+                }
+              }
+            ],
+            "ViewerCertificate": {
+              "AcmCertificateArn": "arn:aws:acm:us-east-1:755905325223:certificate/aee93e4c-7a6e-4b1b-9838-eb836b3e76f8",
+              "MinimumProtocolVersion": "TLSv1.2_2021",
+              "SslSupportMethod": "sni-only"
+            }
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdWebsite/WebsiteDistribution/Resource"
+        }
+      },
+      "CDKMetadata": {
+        "Type": "AWS::CDK::Metadata",
+        "Properties": {
+          "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WLyw6CMBBFv4V9GbEY49bHXgMfYKAUM1Bb05lKTNN/N4qJblyde09yJMj1BoqsmShX3ZgbbCHW3KhRNBOdI5UQd0GNmsW+t5814+QMqsdXzz8JZVzoeu8sQzwgscc2MDor6vLo8YJ2q5Qm2jvL3plX/0f/ximJSpMLXul3EfgWOAnrOg0DLe5yBXIJRTYQYu6DZbxqqGY+AfI6qeLkAAAA"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdWebsite/CDKMetadata/Default"
+        }
+      }
+    },
+    "Outputs": {
+      "WebsiteBucketName": {
+        "Value": {
+          "Ref": "WebsiteBucket75C24D94"
+        }
+      },
+      "WebsiteDistributionId": {
+        "Value": {
+          "Ref": "WebsiteDistribution75DCDA0B"
+        }
+      },
+      "WebsiteDistributionDomainName": {
+        "Value": {
+          "Fn::GetAtt": [
+            "WebsiteDistribution75DCDA0B",
+            "DomainName"
+          ]
+        }
+      }
+    },
+    "Parameters": {
+      "BootstrapVersion": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Default": "/cdk-bootstrap/hnb659fds/version",
+        "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+      }
+    },
+    "Rules": {
+      "CheckBootstrapVersion": {
+        "Assertions": [
+          {
+            "Assert": {
+              "Fn::Not": [
+                {
+                  "Fn::Contains": [
+                    [
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5"
+                    ],
+                    {
+                      "Ref": "BootstrapVersion"
+                    }
+                  ]
+                }
+              ]
+            },
+            "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+          }
+        ]
+      }
+    }
+  },
+  "VambericProdHvmCertificate": {
+    "Description": "Dedicated HVM CloudFront certificate; DNS validation managed in Namecheap",
+    "Resources": {
+      "HvmCertificateBF93E6B1": {
+        "Type": "AWS::CertificateManager::Certificate",
+        "Properties": {
+          "DomainName": "h-v-m.agency",
+          "SubjectAlternativeNames": [
+            "www.h-v-m.agency"
+          ],
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "VambericProdHvmCertificate/HvmCertificate"
+            }
+          ],
+          "ValidationMethod": "DNS"
+        },
+        "UpdateReplacePolicy": "Retain",
+        "DeletionPolicy": "Retain",
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmCertificate/HvmCertificate/Resource"
+        }
+      },
+      "CDKMetadata": {
+        "Type": "AWS::CDK::Metadata",
+        "Properties": {
+          "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzKz0DNQTCwv1k1OydbNyUzSqw4uSUzO1kksL45PTi0qyUzLTE4sSc1NzEtMTy3Sq3ZGiOk4p+UhcWtBfP/SkoLSklqdvPyUVL2sYv0yIxM9I0M9A8Ws4sxM3aLSvJLM3FS9IAgNAGlRQNd/AAAA"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmCertificate/CDKMetadata/Default"
+        }
+      }
+    },
+    "Outputs": {
+      "HvmCertificateArn": {
+        "Value": {
+          "Ref": "HvmCertificateBF93E6B1"
+        }
+      },
+      "HvmCertificateValidationDomains": {
+        "Description": "Retrieve exact validation CNAMEs from ACM in us-east-1 while issuance is pending; see docs/hvm-website.md",
+        "Value": "h-v-m.agency,www.h-v-m.agency"
+      }
+    },
+    "Parameters": {
+      "BootstrapVersion": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Default": "/cdk-bootstrap/hnb659fds/version",
+        "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+      }
+    },
+    "Rules": {
+      "CheckBootstrapVersion": {
+        "Assertions": [
+          {
+            "Assert": {
+              "Fn::Not": [
+                {
+                  "Fn::Contains": [
+                    [
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5"
+                    ],
+                    {
+                      "Ref": "BootstrapVersion"
+                    }
+                  ]
+                }
+              ]
+            },
+            "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+          }
+        ]
+      }
+    }
+  },
+  "VambericProdHvmWebsite": {
+    "Description": "Separate production static hosting for Henry Vincent Moss Agency",
+    "Parameters": {
+      "HvmCertificateArn": {
+        "Type": "String",
+        "AllowedPattern": "^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[0-9a-f-]{36}$",
+        "ConstraintDescription": "Provide an ACM certificate ARN in us-east-1 covering h-v-m.agency and www.h-v-m.agency.",
+        "Description": "Issued dedicated HVM certificate ARN from VambericProdHvmCertificate in us-east-1, in this AWS account"
+      },
+      "BootstrapVersion": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Default": "/cdk-bootstrap/hnb659fds/version",
+        "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+      }
+    },
+    "Resources": {
+      "HvmBucketC7DA7243": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "BucketEncryption": {
+            "ServerSideEncryptionConfiguration": [
+              {
+                "ServerSideEncryptionByDefault": {
+                  "SSEAlgorithm": "AES256"
+                }
+              }
+            ]
+          },
+          "PublicAccessBlockConfiguration": {
+            "BlockPublicAcls": true,
+            "BlockPublicPolicy": true,
+            "IgnorePublicAcls": true,
+            "RestrictPublicBuckets": true
+          }
+        },
+        "UpdateReplacePolicy": "Retain",
+        "DeletionPolicy": "Retain",
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmBucket/Resource"
+        }
+      },
+      "HvmBucketPolicyD20825DA": {
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": {
+            "Ref": "HvmBucketC7DA7243"
+          },
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "s3:*",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "false"
+                  }
+                },
+                "Effect": "Deny",
+                "Principal": {
+                  "AWS": "*"
+                },
+                "Resource": [
+                  {
+                    "Fn::GetAtt": [
+                      "HvmBucketC7DA7243",
+                      "Arn"
+                    ]
+                  },
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::GetAtt": [
+                            "HvmBucketC7DA7243",
+                            "Arn"
+                          ]
+                        },
+                        "/*"
+                      ]
+                    ]
+                  }
+                ]
+              },
+              {
+                "Action": "s3:GetObject",
+                "Condition": {
+                  "StringEquals": {
+                    "AWS:SourceArn": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":cloudfront::",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          ":distribution/",
+                          {
+                            "Ref": "HvmDistributionBC9C58BD"
+                          }
+                        ]
+                      ]
+                    }
+                  }
+                },
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "cloudfront.amazonaws.com"
+                },
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "HvmBucketC7DA7243",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmBucket/Policy/Resource"
+        }
+      },
+      "HvmCanonicalRedirect34D4574C": {
+        "Type": "AWS::CloudFront::Function",
+        "Properties": {
+          "AutoPublish": true,
+          "FunctionCode": "function handler(event) {\n  var request = event.request;\n  if (request.headers.host.value !== 'www.h-v-m.agency') return request;\n  var query = [];\n  for (var key in request.querystring) {\n    var entry = request.querystring[key];\n    var values = entry.multiValue || [entry];\n    for (var i = 0; i < values.length; i++) {\n      query.push(key + '=' + values[i].value);\n    }\n  }\n  return {\n    statusCode: 301,\n    statusDescription: 'Moved Permanently',\n    headers: { location: { value: 'https://h-v-m.agency' + request.uri + (query.length ? '?' + query.join('&') : '') } }\n  };\n}",
+          "FunctionConfig": {
+            "Comment": "eu-west-2VambericProdHvmWanonicalRedirect754AB494",
+            "Runtime": "cloudfront-js-2.0"
+          },
+          "Name": "eu-west-2VambericProdHvmWanonicalRedirect754AB494"
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmCanonicalRedirect/Resource"
+        }
+      },
+      "HvmDistributionOrigin1S3OriginAccessControl8C70E1EB": {
+        "Type": "AWS::CloudFront::OriginAccessControl",
+        "Properties": {
+          "OriginAccessControlConfig": {
+            "Name": "VambericProdHvmWebsiteHvmDisOrigin1S3OriginAccessControl188403BD",
+            "OriginAccessControlOriginType": "s3",
+            "SigningBehavior": "always",
+            "SigningProtocol": "sigv4"
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmDistribution/Origin1/S3OriginAccessControl/Resource"
+        }
+      },
+      "HvmDistributionBC9C58BD": {
+        "Type": "AWS::CloudFront::Distribution",
+        "Properties": {
+          "DistributionConfig": {
+            "Aliases": [
+              "h-v-m.agency",
+              "www.h-v-m.agency"
+            ],
+            "CustomErrorResponses": [
+              {
+                "ErrorCachingMinTTL": 0,
+                "ErrorCode": 403,
+                "ResponseCode": 200,
+                "ResponsePagePath": "/index.html"
+              },
+              {
+                "ErrorCachingMinTTL": 0,
+                "ErrorCode": 404,
+                "ResponseCode": 200,
+                "ResponsePagePath": "/index.html"
+              }
+            ],
+            "DefaultCacheBehavior": {
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "Compress": true,
+              "FunctionAssociations": [
+                {
+                  "EventType": "viewer-request",
+                  "FunctionARN": {
+                    "Fn::GetAtt": [
+                      "HvmCanonicalRedirect34D4574C",
+                      "FunctionARN"
+                    ]
+                  }
+                }
+              ],
+              "TargetOriginId": "VambericProdHvmWebsiteHvmDistributionOrigin12DBC15D4",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            "DefaultRootObject": "index.html",
+            "Enabled": true,
+            "HttpVersion": "http2",
+            "IPV6Enabled": true,
+            "Origins": [
+              {
+                "DomainName": {
+                  "Fn::GetAtt": [
+                    "HvmBucketC7DA7243",
+                    "RegionalDomainName"
+                  ]
+                },
+                "Id": "VambericProdHvmWebsiteHvmDistributionOrigin12DBC15D4",
+                "OriginAccessControlId": {
+                  "Fn::GetAtt": [
+                    "HvmDistributionOrigin1S3OriginAccessControl8C70E1EB",
+                    "Id"
+                  ]
+                },
+                "S3OriginConfig": {
+                  "OriginAccessIdentity": ""
+                }
+              }
+            ],
+            "ViewerCertificate": {
+              "AcmCertificateArn": {
+                "Ref": "HvmCertificateArn"
+              },
+              "MinimumProtocolVersion": "TLSv1.2_2021",
+              "SslSupportMethod": "sni-only"
+            }
+          }
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmDistribution/Resource"
+        }
+      },
+      "HvmDeploymentRole6EB641FC": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Statement": [
+              {
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                    "token.actions.githubusercontent.com:sub": "repo:auriqa-dev@209590030/henry-vincent-moss@1376972156:environment:hvm-prod"
+                  }
+                },
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":iam::755905325223:oidc-provider/token.actions.githubusercontent.com"
+                      ]
+                    ]
+                  }
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "Description": "HVM assets and invalidations from the protected GitHub hvm-prod Environment",
+          "MaxSessionDuration": 3600
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmDeploymentRole/Resource"
+        }
+      },
+      "HvmDeploymentRoleDefaultPolicy1848BF93": {
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "s3:ListBucket",
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::GetAtt": [
+                    "HvmBucketC7DA7243",
+                    "Arn"
+                  ]
+                }
+              },
+              {
+                "Action": [
+                  "s3:GetObject",
+                  "s3:PutObject",
+                  "s3:DeleteObject"
+                ],
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "HvmBucketC7DA7243",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              },
+              {
+                "Action": [
+                  "cloudfront:CreateInvalidation",
+                  "cloudfront:GetInvalidation"
+                ],
+                "Effect": "Allow",
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":cloudfront::755905325223:distribution/",
+                      {
+                        "Ref": "HvmDistributionBC9C58BD"
+                      }
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "HvmDeploymentRoleDefaultPolicy1848BF93",
+          "Roles": [
+            {
+              "Ref": "HvmDeploymentRole6EB641FC"
+            }
+          ]
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/HvmDeploymentRole/DefaultPolicy/Resource"
+        }
+      },
+      "CDKMetadata": {
+        "Type": "AWS::CDK::Metadata",
+        "Properties": {
+          "Analytics": "v2:deflate64:H4sIAAAAAAAA/3VOy27CQAz8Fu4bl4aq6rUFcS0KH4AWx1QmmzVae4uqVf4dJUGll57m4fFoaqhf32C58FetsO2qwEcoe/PYufUp7nzyPRkl15BKTkjOX/VQdAXlI2NHNqbubIadBMafhz3rwWGQ3J6SRIOyzRGNJY6pX75htcTHPIn96jPxF8d3RFJdS7QkYYz/Y/99Hhz7HkojgcbThI9V9z3DVJbtkm1wUVqCsz591y9QP8NycVbmKuVo3BM0M94A9U0ddyoBAAA="
+        },
+        "Metadata": {
+          "aws:cdk:path": "VambericProdHvmWebsite/CDKMetadata/Default"
+        }
+      }
+    },
+    "Outputs": {
+      "HvmBucketName": {
+        "Value": {
+          "Ref": "HvmBucketC7DA7243"
+        }
+      },
+      "HvmDistributionId": {
+        "Value": {
+          "Ref": "HvmDistributionBC9C58BD"
+        }
+      },
+      "HvmDistributionDomainName": {
+        "Value": {
+          "Fn::GetAtt": [
+            "HvmDistributionBC9C58BD",
+            "DomainName"
+          ]
+        }
+      },
+      "HvmDeploymentRoleArn": {
+        "Value": {
+          "Fn::GetAtt": [
+            "HvmDeploymentRole6EB641FC",
+            "Arn"
+          ]
+        }
+      },
+      "HvmCertificateArnOutput": {
+        "Value": {
+          "Ref": "HvmCertificateArn"
+        }
+      }
+    },
+    "Rules": {
+      "CheckBootstrapVersion": {
+        "Assertions": [
+          {
+            "Assert": {
+              "Fn::Not": [
+                {
+                  "Fn::Contains": [
+                    [
+                      "1",
+                      "2",
+                      "3",
+                      "4",
+                      "5"
+                    ],
+                    {
+                      "Ref": "BootstrapVersion"
+                    }
+                  ]
+                }
+              ]
+            },
+            "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+          }
+        ]
+      }
+    }
+  }
+}
