@@ -27,14 +27,18 @@ export class ApiDeploymentPermissionsStack extends cdk.Stack {
           resources: [stackArn],
         }),
         new iam.PolicyStatement({
+          actions: ['cloudformation:CreateChangeSet'],
+          resources: [stackArn],
+          conditions: { StringLike: { 'cloudformation:ChangeSetName': 'app-*' } },
+        }),
+        // Lifecycle calls may use the returned ARN; retain stack scoping without a name condition.
+        new iam.PolicyStatement({
           actions: [
-            'cloudformation:CreateChangeSet',
             'cloudformation:DescribeChangeSet',
             'cloudformation:ExecuteChangeSet',
             'cloudformation:DeleteChangeSet',
           ],
           resources: [stackArn],
-          conditions: { StringLike: { 'cloudformation:ChangeSetName': 'app-*' } },
         }),
         new iam.PolicyStatement({
           actions: ['ecs:DescribeServices'],

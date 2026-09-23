@@ -42,14 +42,18 @@ test('release policy imports the existing role and grants only scoped pipeline p
     },
     {
       Effect: 'Allow',
+      Action: 'cloudformation:CreateChangeSet',
+      Resource: stackArn,
+      Condition: { StringLike: { 'cloudformation:ChangeSetName': 'app-*' } },
+    },
+    {
+      Effect: 'Allow',
       Action: [
-        'cloudformation:CreateChangeSet',
         'cloudformation:DescribeChangeSet',
         'cloudformation:ExecuteChangeSet',
         'cloudformation:DeleteChangeSet',
       ],
       Resource: stackArn,
-      Condition: { StringLike: { 'cloudformation:ChangeSetName': 'app-*' } },
     },
     {
       Effect: 'Allow',
@@ -80,7 +84,24 @@ test('release policy imports the existing role and grants only scoped pipeline p
       Condition: { StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' } },
     },
   ]);
+  const statements = resolveAws(policy.PolicyDocument.Statement) as Array<{
+    Action: string | string[];
+    Resource: string;
+    Condition?: unknown;
+  }>;
+  for (const action of ['DescribeChangeSet', 'ExecuteChangeSet', 'DeleteChangeSet']) {
+    const statement = statements.find((s) =>
+      [s.Action].flat().includes('cloudformation:' + action),
+    );
+    expect(statement).toBeDefined();
+    expect(statement!.Resource).toBe(stackArn);
+    expect(statement).not.toHaveProperty('Condition');
+  }
   const serialized = JSON.stringify(template.toJSON());
+  for (const action of ['UpdateStack', 'DeleteStack', 'CreateStack']) {
+    expect(serialized).not.toContain('cloudformation:' + action);
+  }
+  expect(serialized).not.toContain('AmazonECS_FullAccess');
   expect(serialized).not.toContain('AdministratorAccess');
   expect(serialized).not.toContain('ecs:UpdateService');
   expect(serialized).not.toContain('ecs:RegisterTaskDefinition');

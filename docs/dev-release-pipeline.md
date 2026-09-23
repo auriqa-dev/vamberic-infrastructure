@@ -35,7 +35,8 @@ repo:auriqa-dev@209590030/vamberic-platform-api@1362482756:environment:dev
 The new policy permits:
 
 - CloudFormation `DescribeStacks`, `GetTemplate`, `DescribeStackResource` on `arn:aws:cloudformation:eu-west-2:755905325223:stack/VambericDevApi/*`.
-- `CreateChangeSet`, `DescribeChangeSet`, `ExecuteChangeSet`, `DeleteChangeSet` on that same stack, with `cloudformation:ChangeSetName` matching `app-*`.
+- `CreateChangeSet` on that same stack, with `cloudformation:ChangeSetName` matching `app-*`.
+- `DescribeChangeSet`, `ExecuteChangeSet`, and `DeleteChangeSet` on that same stack in a separate statement with no `ChangeSetName` condition. Lifecycle calls may use a returned change-set ARN rather than its simple name. This split addresses the reported live DescribeChangeSet AccessDenied while retaining stack scoping and controlled creation. The application still validates the generated change set and rejects unrelated infrastructure changes before execution.
 - ECS `DescribeServices` on the exact dev API service and `DescribeTasks` on tasks in its cluster.
 - ECS `ListTasks` with `Resource: *` and `ecs:cluster` restricted to the dev API cluster; `DescribeTaskDefinition` with `Resource: *` because this action has no resource-level IAM support.
 - `iam:PassRole` for only `vamberic-dev-api-task` and `vamberic-dev-api-execution`, with `iam:PassedToService = ecs-tasks.amazonaws.com`.
