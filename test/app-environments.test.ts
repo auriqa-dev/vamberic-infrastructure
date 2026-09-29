@@ -71,6 +71,12 @@ test.each(['us-east-1', 'eu-west-2'])(
           // Only the image may refer to the parameter.
           actual.Resources[taskId].Properties.ContainerDefinitions[0].Image =
             expected.Resources[taskId].Properties.ContainerDefinitions[0].Image;
+          // Reviewed HVM environment additions; all other resources/settings still match baseline.
+          expected.Resources[taskId].Properties.ContainerDefinitions[0].Environment.unshift(
+            { Name: 'HVM_AUTH_ENABLED', Value: 'true' },
+            { Name: 'HVM_COGNITO_CLIENT_ID', Value: 'q40elfmgdcfggcols0qnhot5e' },
+            { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency' },
+          );
           delete actual.Parameters.ApiImageTag;
           expect(JSON.stringify(actual)).not.toContain('ApiImageTag');
         }

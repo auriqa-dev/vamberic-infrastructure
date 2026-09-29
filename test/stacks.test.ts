@@ -103,6 +103,12 @@ describe('Vamberic infrastructure assumptions', () => {
         Match.objectLike({
           Environment: Match.arrayWith([
             {
+              Name: 'HVM_AUTH_ENABLED',
+              Value: 'true',
+            },
+            { Name: 'HVM_COGNITO_CLIENT_ID', Value: 'q40elfmgdcfggcols0qnhot5e' },
+            { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency' },
+            {
               Name: 'NODE_ENV',
               Value: 'production',
             },

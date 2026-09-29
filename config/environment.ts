@@ -24,6 +24,7 @@ export interface EnvironmentConfig {
     readonly senderIdentities: readonly string[];
     readonly recipientsByProduct: Readonly<Record<string, readonly string[]>>;
   };
+  readonly hvmAuth?: { readonly clientId: string; readonly corsOrigins: readonly string[] };
   readonly publicEnquiryCorsOrigins?: readonly string[];
   readonly apiCertificateArn?: string;
   readonly apiRuntimeSecretName?: string;

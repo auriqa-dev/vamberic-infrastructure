@@ -130,6 +130,13 @@ export class ApiStack extends cdk.Stack {
       }),
       portMappings: [{ containerPort: config.containerPort, protocol: ecs.Protocol.TCP }],
       environment: {
+        ...(config.hvmAuth
+          ? {
+              HVM_AUTH_ENABLED: 'true',
+              HVM_COGNITO_CLIENT_ID: config.hvmAuth.clientId,
+              HVM_CORS_ORIGINS: config.hvmAuth.corsOrigins.join(','),
+            }
+          : {}),
         NODE_ENV: config.nodeEnvironment,
         DEPLOYMENT_ENV: config.deploymentEnvironment,
         ...(notifications

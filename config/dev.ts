@@ -14,6 +14,7 @@ export const devConfig: EnvironmentConfig = {
   logRetentionDays: 7,
   healthCheckPath: '/health',
   repositoryRetainedImageCount: 20,
+  hvmAuth: { clientId: 'q40elfmgdcfggcols0qnhot5e', corsOrigins: ['https://app.h-v-m.agency'] },
   publicEnquiryCorsOrigins: ['https://h-v-m.agency'],
   enquiryEmailNotifications: {
     from: 'notifications@vamberic.com',

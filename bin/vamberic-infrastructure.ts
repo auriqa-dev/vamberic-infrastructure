@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { HvmAppStack, HvmAppCertificateStack } from '../lib/hvm-app-stack';
 import * as cdk from 'aws-cdk-lib';
 import { getEnvironmentConfig, resolveApiImageTag } from '../config/environment';
 import { websiteConfig } from '../config/website';
@@ -17,6 +18,11 @@ import { HvmWebsiteStack } from '../lib/hvm-website-stack';
 import { ApiDeploymentPermissionsStack } from '../lib/api-deployment-permissions-stack';
 
 const app = new cdk.App();
+// Explicit opt-in; ordinary API/site deployments do not create HVMapp resources.
+if (app.node.tryGetContext('hvmApp') === 'true') {
+  new HvmAppCertificateStack(app, deploymentAccount);
+  new HvmAppStack(app, deploymentAccount);
+}
 const environmentName = process.env.DEPLOY_ENV ?? app.node.tryGetContext('environment');
 const baseConfig = getEnvironmentConfig(environmentName);
 const config = {
