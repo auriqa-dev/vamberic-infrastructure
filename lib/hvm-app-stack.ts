@@ -39,11 +39,11 @@ export class HvmAppStack extends cdk.Stack {
     const routing = new cf.Function(this, 'SpaRouting', {
       runtime: cf.FunctionRuntime.JS_2_0,
       code: cf.FunctionCode.fromInline(
-        "function handler(event) { var request = event.request; if (request.uri === '/' || !request.uri.split('/').pop().includes('.')) request.uri = '/index.html'; return request; }",
+        "function handler(event) { var request = event.request; var platform = request.headers && request.headers.host && request.headers.host.value === 'app.h-v-m.net'; if (request.uri === '/' || !request.uri.split('/').pop().includes('.')) request.uri = '/index.html'; if (platform) request.uri = '/_platform' + request.uri; return request; }",
       ),
     });
     const distribution = new cf.Distribution(this, 'Distribution', {
-      domainNames: ['app.h-v-m.agency'],
+      domainNames: ['app.h-v-m.net', 'app.h-v-m.agency'],
       certificate: acm.Certificate.fromCertificateArn(
         this,
         'Certificate',

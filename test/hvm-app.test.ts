@@ -15,7 +15,7 @@ test('HVMapp is private, HTTPS, scoped OIDC, CSP and SPA paths', () => {
   });
   t.hasResourceProperties('AWS::CloudFront::Distribution', {
     DistributionConfig: Match.objectLike({
-      Aliases: ['app.h-v-m.agency'],
+      Aliases: ['app.h-v-m.net', 'app.h-v-m.agency'],
       DefaultCacheBehavior: Match.objectLike({ ViewerProtocolPolicy: 'redirect-to-https' }),
     }),
   });
@@ -67,4 +67,19 @@ test('dedicated app certificate does not alter the website certificate', () => {
     DomainName: 'app.h-v-m.agency',
     ValidationMethod: 'DNS',
   });
+});
+
+test('platform origin uses isolated release while old callback stays on old build', () => {
+  const t = Template.fromStack(new HvmAppStack(new cdk.App(), '755905325223'));
+  const code = Object.values(t.findResources('AWS::CloudFront::Function'))[0].Properties.FunctionCode;
+  for (const host of ['app.h-v-m.net', 'app.h-v-m.agency']) {
+    for (const uri of ['/auth/callback', '/client', '/assets/main.js', '/robots.txt']) {
+      const request = { uri, headers: { host: { value: host } }, querystring: { code: { value: 'test-code' }, state: { value: 'test-state' } } };
+      const result = runInNewContext(code + '; handler({request})', { request });
+      const target = uri.includes('.') ? uri : '/index.html';
+      expect(result.uri).toBe((host === 'app.h-v-m.net' ? '/_platform' : '') + target);
+      expect(result.querystring).toEqual(request.querystring);
+      expect(result.statusCode).toBeUndefined();
+    }
+  }
 });

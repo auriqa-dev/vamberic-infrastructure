@@ -107,7 +107,7 @@ describe('Vamberic infrastructure assumptions', () => {
               Value: 'true',
             },
             { Name: 'HVM_COGNITO_CLIENT_ID', Value: 'q40elfmgdcfggcols0qnhot5e' },
-            { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency' },
+            { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency,https://app.h-v-m.net' },
             {
               Name: 'NODE_ENV',
               Value: 'production',

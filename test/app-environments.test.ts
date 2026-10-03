@@ -75,7 +75,7 @@ test.each(['us-east-1', 'eu-west-2'])(
           expected.Resources[taskId].Properties.ContainerDefinitions[0].Environment.unshift(
             { Name: 'HVM_AUTH_ENABLED', Value: 'true' },
             { Name: 'HVM_COGNITO_CLIENT_ID', Value: 'q40elfmgdcfggcols0qnhot5e' },
-            { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency' },
+            { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency,https://app.h-v-m.net' },
           );
           delete actual.Parameters.ApiImageTag;
           expect(JSON.stringify(actual)).not.toContain('ApiImageTag');
