@@ -53,6 +53,8 @@ test.each(['us-east-1', 'eu-west-2'])(
         VambericProdWebsite: 'aws://755905325223/eu-west-2',
         VambericProdHvmCertificate: 'aws://755905325223/us-east-1',
         VambericProdHvmWebsite: 'aws://755905325223/eu-west-2',
+        VambericProdBuiltMattersCertificate: 'aws://755905325223/us-east-1',
+        VambericProdBuiltMattersWebsite: 'aws://755905325223/eu-west-2',
       });
       for (const [name, previous] of Object.entries(baseline)) {
         const actual = JSON.parse(readFileSync(join(outdir, `${name}.template.json`), 'utf8'));
@@ -73,10 +75,16 @@ test.each(['us-east-1', 'eu-west-2'])(
             expected.Resources[taskId].Properties.ContainerDefinitions[0].Image;
           // Reviewed HVM environment additions; all other resources/settings still match baseline.
           expected.Resources[taskId].Properties.ContainerDefinitions[0].Environment.unshift(
+            { Name: 'AGENT_DISPATCH_ENABLED', Value: 'false' },
             { Name: 'HVM_AUTH_ENABLED', Value: 'true' },
+            { Name: 'HVM_EMPRESS_SUBJECTS', Value: 'c60222c4-30d1-7044-8edd-bd144d587afb' },
             { Name: 'HVM_COGNITO_CLIENT_ID', Value: 'q40elfmgdcfggcols0qnhot5e' },
             { Name: 'HVM_CORS_ORIGINS', Value: 'https://app.h-v-m.agency,https://app.h-v-m.net' },
           );
+          expected.Resources[taskId].Properties.RuntimePlatform = {
+            CpuArchitecture: 'X86_64',
+            OperatingSystemFamily: 'LINUX',
+          };
           delete actual.Parameters.ApiImageTag;
           expect(JSON.stringify(actual)).not.toContain('ApiImageTag');
         }

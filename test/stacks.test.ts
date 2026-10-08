@@ -13,8 +13,8 @@ import { RegistryStack } from '../lib/registry-stack';
 import { SecurityStack } from '../lib/security-stack';
 import { WebsiteStack } from '../lib/website-stack';
 
-function createStacks(existingCertificateArn?: string, imageTag = 'test-abcdef0') {
-  const app = new cdk.App();
+function createStacks(existingCertificateArn?: string, imageTag = 'test-abcdef0', brandImagesEnabled = false) {
+  const app = new cdk.App({ context: { brandImagesEnabled } });
   const config = getEnvironmentConfig('dev');
   const network = new NetworkStack(app, config);
   const security = new SecurityStack(app, config, network);
@@ -698,4 +698,71 @@ describe('dev enquiry email notifications', () => {
   test('production does not enable enquiry email notifications', () => {
     expect(getEnvironmentConfig('prod').enquiryEmailNotifications).toBeUndefined();
   });
+});
+
+describe('reviewed inactive release preservation', () => {
+  test('preserves exact Empress allowlist, explicit architecture and inactive execution without queue/workload settings', () => {
+    const template = Template.fromStack(createStacks().api);
+    const task = Object.values(template.findResources('AWS::ECS::TaskDefinition'))[0];
+    expect(task.Properties.RuntimePlatform).toEqual({
+      CpuArchitecture: 'X86_64',
+      OperatingSystemFamily: 'LINUX',
+    });
+    const env = Object.fromEntries(
+      task.Properties.ContainerDefinitions[0].Environment.map(
+        (e: { Name: string; Value: unknown }) => [e.Name, e.Value],
+      ),
+    );
+    expect(env.HVM_EMPRESS_SUBJECTS).toBe('c60222c4-30d1-7044-8edd-bd144d587afb');
+    expect(env.AGENT_DISPATCH_ENABLED).toBe('false');
+    expect(Object.keys(env).filter((k) => k.startsWith('AGENT_'))).toEqual([
+      'AGENT_DISPATCH_ENABLED',
+    ]);
+    expect(env.NOTIFICATION_EMAIL_ENABLED).toBe('true');
+    template.resourceCountIs('AWS::SQS::Queue', 0);
+  });
+  test.each([
+    { subjects: ['invalid'] },
+    { subjects: Array(21).fill('c60222c4-30d1-7044-8edd-bd144d587afb') },
+  ])('rejects malformed or oversized allowlist %j', ({ subjects }: { subjects: string[] }) => {
+    const app = new cdk.App();
+    const config = {
+      ...getEnvironmentConfig('dev'),
+      hvmAuth: { ...getEnvironmentConfig('dev').hvmAuth!, empressSubjects: subjects },
+    };
+    const network = new NetworkStack(app, config);
+    const security = new SecurityStack(app, config, network);
+    const observability = new ObservabilityStack(app, config);
+    const registry = new RegistryStack(app, config);
+    expect(
+      () =>
+        new ApiStack(
+          app,
+          config,
+          network,
+          security,
+          observability,
+          registry,
+          'test-abcdef0',
+          new AuthStack(app, config),
+          config.apiCertificateArn,
+        ),
+    ).toThrow('HVM Empress subjects must be at most 20 Cognito UUIDs');
+  });
+});
+
+
+test('brand images are opt-in, private, versioned and retained with scoped object access', () => {
+  Template.fromStack(createStacks().api).resourceCountIs('AWS::S3::Bucket', 0);
+  const template = Template.fromStack(createStacks(undefined, 'abcdef0', true).api);
+  template.hasResource('AWS::S3::Bucket', {
+    DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain',
+    Properties: { VersioningConfiguration: { Status: 'Enabled' },
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' } }] },
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true } },
+  });
+  template.hasResourceProperties('AWS::IAM::Policy', { PolicyDocument: { Statement: Match.arrayWith([Match.objectLike({
+    Action: ['s3:PutObject', 's3:GetObject', 's3:GetObjectVersion'], Effect: 'Allow',
+    Resource: { 'Fn::Join': ['', [Match.anyValue(), '/brand-images/*']] },
+  })]) } });
 });

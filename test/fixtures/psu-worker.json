@@ -1,0 +1,57 @@
+{
+  "worker": {
+    "configuration": {
+      "schemaVersion": 2,
+      "enabled": true,
+      "region": "eu-west-2",
+      "account": "123456789012",
+      "release": {
+        "environment": "dev",
+        "workloadClass": "agent_runtime",
+        "workloadClientId": "synthetic",
+        "manifestDigest": "fab4da718a8cab873fb69a010aecc057bee59ac2f90c0f5a66e4d4a9ac487987",
+        "buildDigest": "32ffdbcca9a4aee6cb85d4609fa00e71cc2c659fccf3e0c7897841f86fac26f8",
+        "policyDigest": "bf3ed982f350171956890c653bc26661052692fc9d6e90d9152f3e955452668b",
+        "serviceArn": "arn:aws:ecs:eu-west-2:123456789012:service/vamberic-dev-api/vamberic-dev-agent-runtime",
+        "taskDefinitionFamily": "vamberic-dev-agent-runtime",
+        "imageDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "secretArn": "arn:aws:secretsmanager:eu-west-2:123456789012:secret:vamberic/dev/synthetic",
+      "models": {
+        "OPENAI_PROJECT_ID": "proj_synthetic",
+        "PSU_MAKER_MODEL": "gpt-6.1-sol",
+        "PSU_EVALUATOR_MODEL": "gpt-6-astra",
+        "PSU_REVISION_MODEL": "gpt-6.1-sol"
+      }
+    },
+    "qualification": {
+      "schemaVersion": 2,
+      "qualificationDigest": "2f37fc9ddc39e3b0cec6785f85cda71cd72bcf9d8329c53204f106de2ab64f6b",
+      "specification": {
+        "schemaVersion": 2,
+        "enabled": true,
+        "region": "eu-west-2",
+        "account": "123456789012",
+        "release": {
+          "environment": "dev",
+          "workloadClass": "agent_runtime",
+          "workloadClientId": "synthetic",
+          "manifestDigest": "fab4da718a8cab873fb69a010aecc057bee59ac2f90c0f5a66e4d4a9ac487987",
+          "buildDigest": "32ffdbcca9a4aee6cb85d4609fa00e71cc2c659fccf3e0c7897841f86fac26f8",
+          "policyDigest": "bf3ed982f350171956890c653bc26661052692fc9d6e90d9152f3e955452668b",
+          "serviceArn": "arn:aws:ecs:eu-west-2:123456789012:service/vamberic-dev-api/vamberic-dev-agent-runtime",
+          "taskDefinitionFamily": "vamberic-dev-agent-runtime",
+          "imageDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "secretArn": "arn:aws:secretsmanager:eu-west-2:123456789012:secret:vamberic/dev/synthetic",
+        "models": {
+          "OPENAI_PROJECT_ID": "proj_synthetic",
+          "PSU_MAKER_MODEL": "gpt-6.1-sol",
+          "PSU_EVALUATOR_MODEL": "gpt-6-astra",
+          "PSU_REVISION_MODEL": "gpt-6.1-sol"
+        }
+      },
+      "specificationDigest": "e36a6facaddb1df44b917ed7412ffd0ccd4f391e40d60c69eef2f41e99d7ff73"
+    }
+  }
+}

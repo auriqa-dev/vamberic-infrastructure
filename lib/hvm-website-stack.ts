@@ -2,10 +2,9 @@ import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 import { hvmConfig } from '../config/hvm';
+import { createPrivateSiteBucket, createSiteDeploymentRole } from './static-site-resources';
 
 export class HvmWebsiteStack extends cdk.Stack {
   public constructor(scope: Construct, account?: string) {
@@ -27,12 +26,7 @@ export class HvmWebsiteStack extends cdk.Stack {
       'HvmCertificate',
       certificateArn.valueAsString,
     );
-    const bucket = new s3.Bucket(this, 'HvmBucket', {
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      enforceSSL: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    const bucket = createPrivateSiteBucket(this, 'HvmBucket');
     const redirect = new cloudfront.Function(this, 'HvmCanonicalRedirect', {
       runtime: cloudfront.FunctionRuntime.JS_2_0,
       code: cloudfront.FunctionCode.fromInline(`function handler(event) {
@@ -72,41 +66,14 @@ export class HvmWebsiteStack extends cdk.Stack {
         ttl: cdk.Duration.seconds(0),
       })),
     });
-    const provider = iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(
-      this,
-      'GitHubOidcProvider',
-      `arn:${this.partition}:iam::${this.account}:oidc-provider/token.actions.githubusercontent.com`,
-    );
-    const role = new iam.Role(this, 'HvmDeploymentRole', {
+    const role = createSiteDeploymentRole(this, {
+      id: 'HvmDeploymentRole',
       description: 'HVM assets and invalidations from the protected GitHub hvm-prod Environment',
-      assumedBy: new iam.OpenIdConnectPrincipal(provider, {
-        StringEquals: {
-          'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-          'token.actions.githubusercontent.com:sub': `repo:${hvmConfig.deploymentOidcRepository}:environment:${hvmConfig.deploymentEnvironment}`,
-        },
-      }),
-      maxSessionDuration: cdk.Duration.hours(1),
+      oidcRepository: hvmConfig.deploymentOidcRepository,
+      environment: hvmConfig.deploymentEnvironment,
+      bucket,
+      distribution,
     });
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:ListBucket'],
-        resources: [bucket.bucketArn],
-      }),
-    );
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
-        resources: [bucket.arnForObjects('*')],
-      }),
-    );
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['cloudfront:CreateInvalidation', 'cloudfront:GetInvalidation'],
-        resources: [
-          `arn:${this.partition}:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
-        ],
-      }),
-    );
     new cdk.CfnOutput(this, 'HvmBucketName', { value: bucket.bucketName });
     new cdk.CfnOutput(this, 'HvmDistributionId', { value: distribution.distributionId });
     new cdk.CfnOutput(this, 'HvmDistributionDomainName', {

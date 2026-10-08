@@ -58,10 +58,7 @@
           "PolicyDocument": {
             "Statement": [
               {
-                "Action": [
-                  "secretsmanager:GetSecretValue",
-                  "secretsmanager:DescribeSecret"
-                ],
+                "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
                 "Effect": "Allow",
                 "Resource": "arn:aws:secretsmanager:eu-west-2:755905325223:secret:vamberic/dev/api-vDW6XL"
               },
@@ -82,10 +79,7 @@
                 "Resource": "*"
               },
               {
-                "Action": [
-                  "logs:CreateLogStream",
-                  "logs:PutLogEvents"
-                ],
+                "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
                 "Effect": "Allow",
                 "Resource": {
                   "Fn::ImportValue": "VambericDevObservability:ExportsOutputFnGetAttApiLogGroup1DEDFC07ArnD364EB60"
@@ -285,27 +279,17 @@
           ],
           "Cpu": "256",
           "ExecutionRoleArn": {
-            "Fn::GetAtt": [
-              "TaskExecutionRole250D2532",
-              "Arn"
-            ]
+            "Fn::GetAtt": ["TaskExecutionRole250D2532", "Arn"]
           },
           "Family": "vamberic-dev-api",
           "Memory": "512",
           "NetworkMode": "awsvpc",
-          "RequiresCompatibilities": [
-            "FARGATE"
-          ],
+          "RequiresCompatibilities": ["FARGATE"],
           "TaskRoleArn": {
-            "Fn::GetAtt": [
-              "ApplicationTaskRole69491568",
-              "Arn"
-            ]
+            "Fn::GetAtt": ["ApplicationTaskRole69491568", "Arn"]
           }
         },
-        "DependsOn": [
-          "TaskExecutionRoleDefaultPolicyA84DD1B0"
-        ],
+        "DependsOn": ["TaskExecutionRoleDefaultPolicyA84DD1B0"],
         "Metadata": {
           "aws:cdk:path": "VambericDevApi/ApiTaskDefinition/Resource"
         }
@@ -501,10 +485,7 @@
       },
       "ApiLoadBalancerDnsName": {
         "Value": {
-          "Fn::GetAtt": [
-            "ApiLoadBalancer779470C6",
-            "DNSName"
-          ]
+          "Fn::GetAtt": ["ApiLoadBalancer779470C6", "DNSName"]
         }
       },
       "ApiClusterName": {
@@ -561,13 +542,7 @@
               "Fn::Not": [
                 {
                   "Fn::Contains": [
-                    [
-                      "1",
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
+                    ["1", "2", "3", "4", "5"],
                     {
                       "Ref": "BootstrapVersion"
                     }
@@ -630,20 +605,14 @@
                 },
                 "Resource": [
                   {
-                    "Fn::GetAtt": [
-                      "VappBucketF8CB2AAC",
-                      "Arn"
-                    ]
+                    "Fn::GetAtt": ["VappBucketF8CB2AAC", "Arn"]
                   },
                   {
                     "Fn::Join": [
                       "",
                       [
                         {
-                          "Fn::GetAtt": [
-                            "VappBucketF8CB2AAC",
-                            "Arn"
-                          ]
+                          "Fn::GetAtt": ["VappBucketF8CB2AAC", "Arn"]
                         },
                         "/*"
                       ]
@@ -685,10 +654,7 @@
                     "",
                     [
                       {
-                        "Fn::GetAtt": [
-                          "VappBucketF8CB2AAC",
-                          "Arn"
-                        ]
+                        "Fn::GetAtt": ["VappBucketF8CB2AAC", "Arn"]
                       },
                       "/*"
                     ]
@@ -721,9 +687,7 @@
         "Type": "AWS::CloudFront::Distribution",
         "Properties": {
           "DistributionConfig": {
-            "Aliases": [
-              "app.vamberic.com"
-            ],
+            "Aliases": ["app.vamberic.com"],
             "CustomErrorResponses": [
               {
                 "ErrorCachingMinTTL": 0,
@@ -751,17 +715,11 @@
             "Origins": [
               {
                 "DomainName": {
-                  "Fn::GetAtt": [
-                    "VappBucketF8CB2AAC",
-                    "RegionalDomainName"
-                  ]
+                  "Fn::GetAtt": ["VappBucketF8CB2AAC", "RegionalDomainName"]
                 },
                 "Id": "VambericDevVappVappDistributionOrigin1D0E07045",
                 "OriginAccessControlId": {
-                  "Fn::GetAtt": [
-                    "VappDistributionOrigin1S3OriginAccessControl0B5F361B",
-                    "Id"
-                  ]
+                  "Fn::GetAtt": ["VappDistributionOrigin1S3OriginAccessControl0B5F361B", "Id"]
                 },
                 "S3OriginConfig": {
                   "OriginAccessIdentity": ""
@@ -827,27 +785,18 @@
                 "Action": "s3:ListBucket",
                 "Effect": "Allow",
                 "Resource": {
-                  "Fn::GetAtt": [
-                    "VappBucketF8CB2AAC",
-                    "Arn"
-                  ]
+                  "Fn::GetAtt": ["VappBucketF8CB2AAC", "Arn"]
                 }
               },
               {
-                "Action": [
-                  "s3:PutObject",
-                  "s3:DeleteObject"
-                ],
+                "Action": ["s3:PutObject", "s3:DeleteObject"],
                 "Effect": "Allow",
                 "Resource": {
                   "Fn::Join": [
                     "",
                     [
                       {
-                        "Fn::GetAtt": [
-                          "VappBucketF8CB2AAC",
-                          "Arn"
-                        ]
+                        "Fn::GetAtt": ["VappBucketF8CB2AAC", "Arn"]
                       },
                       "/*"
                     ]
@@ -900,10 +849,7 @@
     "Outputs": {
       "VappDeploymentRoleArn": {
         "Value": {
-          "Fn::GetAtt": [
-            "VappDeploymentRoleB8CD46CD",
-            "Arn"
-          ]
+          "Fn::GetAtt": ["VappDeploymentRoleB8CD46CD", "Arn"]
         }
       },
       "VappBucketName": {
@@ -918,10 +864,7 @@
       },
       "VappDistributionDomainName": {
         "Value": {
-          "Fn::GetAtt": [
-            "VappDistributionEC7887F2",
-            "DomainName"
-          ]
+          "Fn::GetAtt": ["VappDistributionEC7887F2", "DomainName"]
         }
       }
     },
@@ -940,13 +883,7 @@
               "Fn::Not": [
                 {
                   "Fn::Contains": [
-                    [
-                      "1",
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
+                    ["1", "2", "3", "4", "5"],
                     {
                       "Ref": "BootstrapVersion"
                     }
@@ -1009,20 +946,14 @@
                 },
                 "Resource": [
                   {
-                    "Fn::GetAtt": [
-                      "WebsiteBucket75C24D94",
-                      "Arn"
-                    ]
+                    "Fn::GetAtt": ["WebsiteBucket75C24D94", "Arn"]
                   },
                   {
                     "Fn::Join": [
                       "",
                       [
                         {
-                          "Fn::GetAtt": [
-                            "WebsiteBucket75C24D94",
-                            "Arn"
-                          ]
+                          "Fn::GetAtt": ["WebsiteBucket75C24D94", "Arn"]
                         },
                         "/*"
                       ]
@@ -1064,10 +995,7 @@
                     "",
                     [
                       {
-                        "Fn::GetAtt": [
-                          "WebsiteBucket75C24D94",
-                          "Arn"
-                        ]
+                        "Fn::GetAtt": ["WebsiteBucket75C24D94", "Arn"]
                       },
                       "/*"
                     ]
@@ -1100,9 +1028,7 @@
         "Type": "AWS::CloudFront::Distribution",
         "Properties": {
           "DistributionConfig": {
-            "Aliases": [
-              "www.vamberic.com"
-            ],
+            "Aliases": ["www.vamberic.com"],
             "CustomErrorResponses": [
               {
                 "ErrorCachingMinTTL": 0,
@@ -1130,17 +1056,11 @@
             "Origins": [
               {
                 "DomainName": {
-                  "Fn::GetAtt": [
-                    "WebsiteBucket75C24D94",
-                    "RegionalDomainName"
-                  ]
+                  "Fn::GetAtt": ["WebsiteBucket75C24D94", "RegionalDomainName"]
                 },
                 "Id": "VambericProdWebsiteWebsiteDistributionOrigin106833ACE",
                 "OriginAccessControlId": {
-                  "Fn::GetAtt": [
-                    "WebsiteDistributionOrigin1S3OriginAccessControlAD90E5FA",
-                    "Id"
-                  ]
+                  "Fn::GetAtt": ["WebsiteDistributionOrigin1S3OriginAccessControlAD90E5FA", "Id"]
                 },
                 "S3OriginConfig": {
                   "OriginAccessIdentity": ""
@@ -1181,10 +1101,7 @@
       },
       "WebsiteDistributionDomainName": {
         "Value": {
-          "Fn::GetAtt": [
-            "WebsiteDistribution75DCDA0B",
-            "DomainName"
-          ]
+          "Fn::GetAtt": ["WebsiteDistribution75DCDA0B", "DomainName"]
         }
       }
     },
@@ -1203,13 +1120,7 @@
               "Fn::Not": [
                 {
                   "Fn::Contains": [
-                    [
-                      "1",
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
+                    ["1", "2", "3", "4", "5"],
                     {
                       "Ref": "BootstrapVersion"
                     }
@@ -1230,9 +1141,7 @@
         "Type": "AWS::CertificateManager::Certificate",
         "Properties": {
           "DomainName": "h-v-m.agency",
-          "SubjectAlternativeNames": [
-            "www.h-v-m.agency"
-          ],
+          "SubjectAlternativeNames": ["www.h-v-m.agency"],
           "Tags": [
             {
               "Key": "Name",
@@ -1283,13 +1192,7 @@
               "Fn::Not": [
                 {
                   "Fn::Contains": [
-                    [
-                      "1",
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
+                    ["1", "2", "3", "4", "5"],
                     {
                       "Ref": "BootstrapVersion"
                     }
@@ -1365,20 +1268,14 @@
                 },
                 "Resource": [
                   {
-                    "Fn::GetAtt": [
-                      "HvmBucketC7DA7243",
-                      "Arn"
-                    ]
+                    "Fn::GetAtt": ["HvmBucketC7DA7243", "Arn"]
                   },
                   {
                     "Fn::Join": [
                       "",
                       [
                         {
-                          "Fn::GetAtt": [
-                            "HvmBucketC7DA7243",
-                            "Arn"
-                          ]
+                          "Fn::GetAtt": ["HvmBucketC7DA7243", "Arn"]
                         },
                         "/*"
                       ]
@@ -1420,10 +1317,7 @@
                     "",
                     [
                       {
-                        "Fn::GetAtt": [
-                          "HvmBucketC7DA7243",
-                          "Arn"
-                        ]
+                        "Fn::GetAtt": ["HvmBucketC7DA7243", "Arn"]
                       },
                       "/*"
                     ]
@@ -1471,10 +1365,7 @@
         "Type": "AWS::CloudFront::Distribution",
         "Properties": {
           "DistributionConfig": {
-            "Aliases": [
-              "h-v-m.agency",
-              "www.h-v-m.agency"
-            ],
+            "Aliases": ["h-v-m.agency", "www.h-v-m.agency"],
             "CustomErrorResponses": [
               {
                 "ErrorCachingMinTTL": 0,
@@ -1496,10 +1387,7 @@
                 {
                   "EventType": "viewer-request",
                   "FunctionARN": {
-                    "Fn::GetAtt": [
-                      "HvmCanonicalRedirect34D4574C",
-                      "FunctionARN"
-                    ]
+                    "Fn::GetAtt": ["HvmCanonicalRedirect34D4574C", "FunctionARN"]
                   }
                 }
               ],
@@ -1513,17 +1401,11 @@
             "Origins": [
               {
                 "DomainName": {
-                  "Fn::GetAtt": [
-                    "HvmBucketC7DA7243",
-                    "RegionalDomainName"
-                  ]
+                  "Fn::GetAtt": ["HvmBucketC7DA7243", "RegionalDomainName"]
                 },
                 "Id": "VambericProdHvmWebsiteHvmDistributionOrigin12DBC15D4",
                 "OriginAccessControlId": {
-                  "Fn::GetAtt": [
-                    "HvmDistributionOrigin1S3OriginAccessControl8C70E1EB",
-                    "Id"
-                  ]
+                  "Fn::GetAtt": ["HvmDistributionOrigin1S3OriginAccessControl8C70E1EB", "Id"]
                 },
                 "S3OriginConfig": {
                   "OriginAccessIdentity": ""
@@ -1591,28 +1473,18 @@
                 "Action": "s3:ListBucket",
                 "Effect": "Allow",
                 "Resource": {
-                  "Fn::GetAtt": [
-                    "HvmBucketC7DA7243",
-                    "Arn"
-                  ]
+                  "Fn::GetAtt": ["HvmBucketC7DA7243", "Arn"]
                 }
               },
               {
-                "Action": [
-                  "s3:GetObject",
-                  "s3:PutObject",
-                  "s3:DeleteObject"
-                ],
+                "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
                 "Effect": "Allow",
                 "Resource": {
                   "Fn::Join": [
                     "",
                     [
                       {
-                        "Fn::GetAtt": [
-                          "HvmBucketC7DA7243",
-                          "Arn"
-                        ]
+                        "Fn::GetAtt": ["HvmBucketC7DA7243", "Arn"]
                       },
                       "/*"
                     ]
@@ -1620,10 +1492,7 @@
                 }
               },
               {
-                "Action": [
-                  "cloudfront:CreateInvalidation",
-                  "cloudfront:GetInvalidation"
-                ],
+                "Action": ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"],
                 "Effect": "Allow",
                 "Resource": {
                   "Fn::Join": [
@@ -1678,18 +1547,12 @@
       },
       "HvmDistributionDomainName": {
         "Value": {
-          "Fn::GetAtt": [
-            "HvmDistributionBC9C58BD",
-            "DomainName"
-          ]
+          "Fn::GetAtt": ["HvmDistributionBC9C58BD", "DomainName"]
         }
       },
       "HvmDeploymentRoleArn": {
         "Value": {
-          "Fn::GetAtt": [
-            "HvmDeploymentRole6EB641FC",
-            "Arn"
-          ]
+          "Fn::GetAtt": ["HvmDeploymentRole6EB641FC", "Arn"]
         }
       },
       "HvmCertificateArnOutput": {
@@ -1706,13 +1569,7 @@
               "Fn::Not": [
                 {
                   "Fn::Contains": [
-                    [
-                      "1",
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
+                    ["1", "2", "3", "4", "5"],
                     {
                       "Ref": "BootstrapVersion"
                     }

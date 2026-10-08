@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { loadPsuDeploymentInput } from '../lib/psu-deployment-input';
+import { AgentRuntimeFoundationStack } from '../lib/agent-runtime-foundation-stack';
+import { AgentRuntimeStack } from '../lib/agent-runtime-stack';
+import { vappConfig } from '../config/vapp';
 import { HvmAppStack, HvmAppCertificateStack } from '../lib/hvm-app-stack';
 import * as cdk from 'aws-cdk-lib';
 import { getEnvironmentConfig, resolveApiImageTag } from '../config/environment';
@@ -16,6 +20,9 @@ import { WebsiteStack } from '../lib/website-stack';
 import { HvmCertificateStack } from '../lib/hvm-certificate-stack';
 import { HvmWebsiteStack } from '../lib/hvm-website-stack';
 import { ApiDeploymentPermissionsStack } from '../lib/api-deployment-permissions-stack';
+
+import { BuiltMattersCertificateStack } from '../lib/built-matters-certificate-stack';
+import { BuiltMattersWebsiteStack } from '../lib/built-matters-website-stack';
 
 const app = new cdk.App();
 // Explicit opt-in; ordinary API/site deployments do not create HVMapp resources.
@@ -52,6 +59,26 @@ if (config.name === 'dev') {
   new VappStack(app, config);
   new ApiDeploymentPermissionsStack(app);
 }
+const agentRuntimeEnabled = app.node.tryGetContext('agentRuntime') === 'true';
+const workerPackage = app.node.tryGetContext('psuWorkerPackage');
+const releasePackage = app.node.tryGetContext('psuReleasePackage');
+if ((workerPackage !== undefined || releasePackage !== undefined) && !agentRuntimeEnabled)
+  throw new Error('PSU configuration requires Agent Runtime infrastructure.');
+if (workerPackage !== undefined && releasePackage !== undefined)
+  throw new Error('Select one PSU package stage.');
+const psu = loadPsuDeploymentInput(
+  releasePackage ?? workerPackage,
+  releasePackage !== undefined ? 'api' : 'worker',
+  config,
+);
+
+if (agentRuntimeEnabled && (!auth || config.name !== 'dev')) {
+  throw new Error(
+    'Initial Agent Runtime infrastructure requires the existing dev Cognito/TLS foundation.',
+  );
+}
+const agentRuntime =
+  agentRuntimeEnabled && auth ? new AgentRuntimeFoundationStack(app, config, auth) : undefined;
 const api = new ApiStack(
   app,
   config,
@@ -62,7 +89,19 @@ const api = new ApiStack(
   imageTag,
   auth,
   apiCertificate,
+  agentRuntime,
+  psu,
 );
+if (agentRuntime)
+  new AgentRuntimeStack(
+    app,
+    config,
+    network,
+    api.cluster,
+    agentRuntime,
+    `https://${vappConfig.apiDomainName}`,
+    psu,
+  );
 new WebsiteStack(app, {
   ...websiteConfig,
   account: deploymentAccount,
@@ -70,6 +109,8 @@ new WebsiteStack(app, {
 
 new HvmCertificateStack(app, deploymentAccount);
 new HvmWebsiteStack(app, deploymentAccount);
+new BuiltMattersCertificateStack(app);
+new BuiltMattersWebsiteStack(app);
 
 security.addStackDependency(network);
 api.addStackDependency(network);

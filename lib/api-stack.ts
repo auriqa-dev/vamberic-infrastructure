@@ -1,9 +1,14 @@
+import { psuAppInput } from './psu-app-input';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import type { PsuDeploymentInput } from './psu-deployment-input';
+import type { AgentRuntimeFoundationStack } from './agent-runtime-foundation-stack';
 import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import type { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environment';
 import { stackName } from '../config/environment';
@@ -15,6 +20,7 @@ import type { RegistryStack } from './registry-stack';
 import type { SecurityStack } from './security-stack';
 
 export class ApiStack extends cdk.Stack {
+  public readonly cluster: ecs.Cluster;
   public constructor(
     scope: Construct,
     config: EnvironmentConfig,
@@ -25,6 +31,8 @@ export class ApiStack extends cdk.Stack {
     imageTag: string | undefined,
     auth?: AuthStack,
     apiCertificate?: acm.ICertificate | string,
+    agentRuntime?: AgentRuntimeFoundationStack,
+    psu?: PsuDeploymentInput,
   ) {
     super(scope, stackName(config, 'Api'), {
       env: {
@@ -71,6 +79,8 @@ export class ApiStack extends cdk.Stack {
         config.name === 'prod' ? ecs.ContainerInsights.ENABLED : ecs.ContainerInsights.DISABLED,
     });
 
+    this.cluster = cluster;
+
     const executionRole = new iam.Role(this, 'TaskExecutionRole', {
       roleName: `vamberic-${config.name}-api-execution`,
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
@@ -84,6 +94,44 @@ export class ApiStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       description: 'Application permissions start empty and are granted per feature',
     });
+
+    if (agentRuntime)
+      taskRole.addToPolicy(
+        new iam.PolicyStatement({
+          actions: ['sqs:SendMessage'],
+          resources: [agentRuntime.queue.queueArn],
+        }),
+      );
+
+    if (agentRuntime) {
+      // Observation only: workload reports never establish their own deployment identity.
+      taskRole.addToPolicy(
+        new iam.PolicyStatement({
+          actions: ['ecs:DescribeServices'],
+          resources: [
+            this.formatArn({
+              service: 'ecs',
+              resource: 'service',
+              resourceName: `vamberic-${config.name}-api/vamberic-${config.name}-agent-runtime`,
+              arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
+            }),
+          ],
+        }),
+      );
+      taskRole.addToPolicy(
+        new iam.PolicyStatement({
+          actions: ['ecs:DescribeTasks'],
+          resources: [
+            this.formatArn({
+              service: 'ecs',
+              resource: 'task',
+              resourceName: `vamberic-${config.name}-api/*`,
+              arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
+            }),
+          ],
+        }),
+      );
+    }
 
     const notifications = config.enquiryEmailNotifications;
     if (notifications) {
@@ -99,6 +147,10 @@ export class ApiStack extends cdk.Stack {
 
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'ApiTaskDefinition', {
       family: `vamberic-${config.name}-api`,
+      runtimePlatform: {
+        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+        cpuArchitecture: ecs.CpuArchitecture.X86_64,
+      },
       cpu: config.cpu,
       memoryLimitMiB: config.memoryMiB,
       executionRole,
@@ -109,6 +161,9 @@ export class ApiStack extends cdk.Stack {
     if (!taskExecutionRole) {
       throw new Error('The API task definition must have an execution role.');
     }
+    const appPsu = psuAppInput(this.node.tryGetContext('psuApp'), config.account, config.region);
+    const psuSecret = appPsu ? secretsmanager.Secret.fromSecretCompleteArn(this, 'PsuAppProviderKey', appPsu.secretArn) : undefined;
+    psuSecret?.grantRead(taskExecutionRole);
     const secretReadGrant = security.apiRuntimeSecret.grantRead(taskExecutionRole);
     const cfnTaskDefinition = taskDefinition.node.defaultChild;
     if (!(cfnTaskDefinition instanceof ecs.CfnTaskDefinition)) {
@@ -121,6 +176,31 @@ export class ApiStack extends cdk.Stack {
     }
     cfnTaskDefinition.node.addDependency(taskExecutionPolicy);
 
+    const empressSubjects = config.hvmAuth?.empressSubjects ?? [];
+    if (
+      empressSubjects.length > 20 ||
+      empressSubjects.some(
+        (subject) =>
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subject),
+      )
+    ) {
+      throw new Error('HVM Empress subjects must be at most 20 Cognito UUIDs');
+    }
+    const brandImages = this.node.tryGetContext('brandImagesEnabled') === true
+      ? new s3.Bucket(this, 'BrandImages', {
+          bucketName: `vamberic-${config.name}-brand-images-${config.account}`,
+          blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+          encryption: s3.BucketEncryption.S3_MANAGED,
+          enforceSSL: true,
+          versioned: true,
+          objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+          removalPolicy: cdk.RemovalPolicy.RETAIN,
+        })
+      : undefined;
+    if (brandImages) taskRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['s3:PutObject', 's3:GetObject', 's3:GetObjectVersion'],
+      resources: [brandImages.arnForObjects('brand-images/*')],
+    }));
     taskDefinition.addContainer('ApiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(registry.apiRepository, deployedImageTag),
       containerName: 'api',
@@ -130,9 +210,21 @@ export class ApiStack extends cdk.Stack {
       }),
       portMappings: [{ containerPort: config.containerPort, protocol: ecs.Protocol.TCP }],
       environment: {
+        ...(appPsu ? { HVM_PSU_OPENAI_PROJECT: appPsu.projectId, HVM_PSU_MODEL: appPsu.model } : psu?.apiEnvironment),
+        ...(brandImages ? { BRAND_IMAGES_BUCKET: brandImages.bucketName } : {}),
+        AGENT_DISPATCH_ENABLED: 'false',
+        ...(agentRuntime
+          ? {
+              AGENT_WORKLOAD_ISSUER: agentRuntime.issuer,
+              AGENT_WORKLOAD_CLIENT_ID: agentRuntime.client.userPoolClientId,
+              AGENT_WORKLOAD_RESOURCE_SERVER: agentRuntime.resourceServer,
+              AGENT_QUEUE_URL: agentRuntime.queue.queueUrl,
+            }
+          : {}),
         ...(config.hvmAuth
           ? {
               HVM_AUTH_ENABLED: 'true',
+              HVM_EMPRESS_SUBJECTS: empressSubjects.join(','),
               HVM_COGNITO_CLIENT_ID: config.hvmAuth.clientId,
               HVM_CORS_ORIGINS: config.hvmAuth.corsOrigins.join(','),
             }
@@ -162,6 +254,7 @@ export class ApiStack extends cdk.Stack {
       },
       secrets: {
         MONGODB_URI: ecs.Secret.fromSecretsManager(security.apiRuntimeSecret, 'MONGODB_URI'),
+        ...(psuSecret ? { HVM_PSU_API_KEY: ecs.Secret.fromSecretsManager(psuSecret, 'OPENAI_API_KEY') } : {}),
       },
       healthCheck: {
         command: [
